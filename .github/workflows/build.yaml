@@ -24,8 +24,8 @@ jobs:
 
       - name: Build (Debug)
         shell: cmd
-        run: compile.bat debug false
+        run: compile.bat debug false "C:\msys64\mingw64"
 
       - name: Build (Release)
         shell: cmd
-        run: compile.bat release false
+        run: compile.bat release false "C:\msys64\mingw64"
