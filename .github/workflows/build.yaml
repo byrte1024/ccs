@@ -26,19 +26,19 @@ jobs:
         id: raylib
         shell: pwsh
         run: |
-          $raylibRoot = "C:\msys64\mingw64"
-          Write-Output "Raylib root detected: $raylibRoot"
-          echo "raylib_root=$raylibRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $raylibRoot = "C:/msys64/mingw64"
+          echo "raylib_root=$raylibRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
+
 
 
 
       - name: Build (Debug)
         shell: cmd
-        run: compile.bat debug false "${{ steps.raylib.outputs.raylib_root }}"
+        run: compile.bat debug false "%RAYLIB_ROOT%"
 
       - name: Build (Release)
         shell: cmd
-        run: compile.bat release false "${{ steps.raylib.outputs.raylib_root }}"
+        run: compile.bat release false "%RAYLIB_ROOT%"
 
       - name: Run Unit Tests
         shell: bash
