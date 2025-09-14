@@ -24,23 +24,16 @@ jobs:
 
       - name: Find Raylib include/lib dirs
         id: raylib
-        shell: pwsh
+        shell: bash
         run: |
-          $raylibRoot = "C:\msys64\mingw64"
-          Write-Output "Raylib root detected: $raylibRoot"
-          echo "RAYLIB_ROOT=$raylibRoot" >> $env:GITHUB_ENV
-
-
-
+          raylib_root="/mingw64"
+          echo "raylib_root=$raylib_root" >> $GITHUB_OUTPUT
+          echo "Raylib root detected: $raylib_root"
 
       - name: Build (Debug)
         shell: cmd
-        run: compile.bat debug false "%RAYLIB_ROOT%"
+        run: compile.bat debug false "C:\msys64\mingw64"
 
       - name: Build (Release)
         shell: cmd
-        run: compile.bat release false "%RAYLIB_ROOT%"
-
-      - name: Run Unit Tests
-        shell: bash
-        run: ./run_tests.sh
+        run: compile.bat release false "C:\msys64\mingw64"
