@@ -31,11 +31,11 @@ jobs:
 
       - name: Build (Debug)
         shell: cmd
-        run: build.bat debug false "${{ steps.raylib.outputs.raylib_root }}"
+        run: compile.bat debug false "${{ steps.raylib.outputs.raylib_root }}"
 
       - name: Build (Release)
         shell: cmd
-        run: build.bat release false "${{ steps.raylib.outputs.raylib_root }}"
+        run: compile.bat release false "${{ steps.raylib.outputs.raylib_root }}"
 
       - name: Run Unit Tests
         shell: bash
