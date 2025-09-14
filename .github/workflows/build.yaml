@@ -24,8 +24,8 @@ jobs:
 
       - name: Build (Debug)
         shell: cmd
-        run: build.bat debug false
+        run: compile.bat debug false
 
       - name: Build (Release)
         shell: cmd
-        run: build.bat release false
+        run: compile.bat release false

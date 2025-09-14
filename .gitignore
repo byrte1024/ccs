@@ -58,6 +58,5 @@ dkms.conf
 build/*
 project/data/*
 compile_flags.txt
-compile.bat
 raytree.code-workspace
 *.rc
