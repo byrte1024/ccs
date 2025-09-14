@@ -56,7 +56,5 @@ dkms.conf
 
 .vscode/*
 build/*
-project/data/*
 compile_flags.txt
 raytree.code-workspace
-*.rc
