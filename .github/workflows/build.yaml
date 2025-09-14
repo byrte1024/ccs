@@ -26,8 +26,9 @@ jobs:
         id: raylib
         shell: pwsh
         run: |
-          $raylibRoot = "C:/msys64/mingw64"
-          echo "raylib_root=$raylibRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
+          $raylibRoot = "C:\msys64\mingw64"
+          Write-Output "Raylib root detected: $raylibRoot"
+          echo "RAYLIB_ROOT=$raylibRoot" >> $env:GITHUB_ENV
 
 
 
