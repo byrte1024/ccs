@@ -26,15 +26,10 @@ jobs:
         id: raylib
         shell: pwsh
         run: |
-          $msys2Root = $env:MSYS2
-          if (-not $msys2Root) {
-              Write-Error "MSYS2 environment variable not set!"
-              exit 1
-          }
-          # Forward slashes for compatibility
-          $raylibRoot = Join-Path $msys2Root "mingw64" | ForEach-Object { $_ -replace '\\','/' }
+          $raylibRoot = "C:\msys64\mingw64"
           Write-Output "Raylib root detected: $raylibRoot"
           echo "raylib_root=$raylibRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
 
 
       - name: Build (Debug)
