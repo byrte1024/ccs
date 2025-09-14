@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install MSYS2
+      - name: Install MSYS2 and Raylib
         uses: msys2/setup-msys2@v2
         with:
           update: true
@@ -22,10 +22,21 @@ jobs:
             mingw-w64-x86_64-raylib
             mingw-w64-x86_64-gdb
 
+      - name: Find Raylib include/lib dirs
+        id: raylib
+        shell: pwsh
+        run: |
+          $raylibRoot = "${env:MSYS2_ROOT}\mingw64"
+          echo "raylib_root=$raylibRoot" >> $env:GITHUB_OUTPUT
+
       - name: Build (Debug)
         shell: cmd
-        run: compile.bat debug false "C:\msys64\mingw64"
+        run: build.bat debug false "${{ steps.raylib.outputs.raylib_root }}"
 
       - name: Build (Release)
         shell: cmd
-        run: compile.bat release false "C:\msys64\mingw64"
+        run: build.bat release false "${{ steps.raylib.outputs.raylib_root }}"
+
+      - name: Run Unit Tests
+        shell: bash
+        run: ./run_tests.sh
