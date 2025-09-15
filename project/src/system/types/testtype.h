@@ -27,6 +27,10 @@ BEGIN_CLASS(0x001b,"Test Type");
         ClassInstance* i = prm->self;
 
         TestType* t = malloc(sizeof(TestType));
+        if(t == NULL){
+            prm->code = FUN_ERROR;
+            return;
+        }
         t->x = 1;
         t->y = 2;
         t->z = 3;

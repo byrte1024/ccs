@@ -9,6 +9,7 @@
 
 #include <raylib.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef void* InstanceDataPtr;
 
@@ -145,6 +146,11 @@ DEFINE_I_FUNCTION_WRAPPER(  DESTROY      , {
 
 static ClassInstance* Class_Instance_AllocateEmpty() {
     ClassInstance* instance = malloc(sizeof(ClassInstance));
+    if(instance == NULL){
+        TraceLog(LOG_ERROR, "Error while allocating instance.");
+        return NULL;
+    }
+    memset(instance, 0, sizeof(ClassInstance));
     instance->data = NULL;
     instance->cid = CID_DEF;
     instance->ref_count = 0;

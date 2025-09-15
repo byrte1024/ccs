@@ -4,13 +4,13 @@ setlocal ENABLEDELAYEDEXPANSION
 REM === Argument Checking ===
 if "%~1"=="" (
     echo.
-    echo [!] Usage: %~nx0 [release^|debug] [true^|false]
+    echo [!] Usage: %~nx0 [release^|debug^|test] [true^|false]
     echo.
     exit /b 1
 )
 if "%~2"=="" (
     echo.
-    echo [!] Usage: %~nx0 [release^|debug] [true^|false]
+    echo [!] Usage: %~nx0 [release^|debug^|test] [true^|false]
     echo.
     exit /b 1
 )
@@ -18,10 +18,10 @@ if "%~2"=="" (
 set "BUILD_TYPE=%~1"
 set "RUN_AFTER=%~2"
 
-if /I not "%BUILD_TYPE%"=="release" if /I not "%BUILD_TYPE%"=="debug" (
+if /I not "%BUILD_TYPE%"=="release" if /I not "%BUILD_TYPE%"=="debug" if /I not "%BUILD_TYPE%"=="test" (
     echo.
     echo [ERROR] Invalid build type: "%BUILD_TYPE%"
-    echo         Must be either "release" or "debug"
+    echo         Must be "release", "debug", or "test"
     echo.
     exit /b 1
 )
@@ -44,11 +44,16 @@ if /I "%BUILD_TYPE%"=="debug" (
     set "CFLAGS=-g -O0 -Wall -Wextra -I"%RAYLIB_INC%"" 
     set "LDFLAGS=-g -L"%RAYLIB_LIB%" -lraylib -lopengl32 -lgdi32 -lwinmm -lkernel32"
     echo [*] Build Mode: DEBUG
-) else (
+) else if /I "%BUILD_TYPE%"=="release" (
     set "OUT_DIR=build\release"
     set "CFLAGS=-O2 -I"%RAYLIB_INC%"" 
     set "LDFLAGS=-L"%RAYLIB_LIB%" -lraylib -lopengl32 -lgdi32 -lwinmm -lkernel32"
     echo [*] Build Mode: RELEASE
+) else (
+    set "OUT_DIR=build\test"
+    set "CFLAGS=-g -O0 -Wall -Wextra -DINTESTING=1 -I"%RAYLIB_INC%"" 
+    set "LDFLAGS=-g -L"%RAYLIB_LIB%" -lraylib -lopengl32 -lgdi32 -lwinmm -lkernel32"
+    echo [*] Build Mode: TEST
 )
 
 if not exist "%OUT_DIR%" (
@@ -104,10 +109,20 @@ echo.
 echo [v/] Build successful: "!EXE!"
 echo.
 
-
-
-REM === Run If Requested ===
-if /I "%RUN_AFTER%"=="true" (
+REM === Run If Requested Or If Test Mode ===
+if /I "%BUILD_TYPE%"=="test" (
+    echo ============================================
+    echo             Running Test Build             
+    echo ============================================
+    "!EXE!"
+    echo.
+    if !ERRORLEVEL! EQU 0 (
+        echo [v/] Test PASSED with exit code 0
+    ) else (
+        echo [X] Test FAILED with exit code !ERRORLEVEL!
+    )
+    exit /b !ERRORLEVEL!
+) else if /I "%RUN_AFTER%"=="true" (
     echo ============================================
     echo               Executing Program            
     echo ============================================
@@ -118,5 +133,7 @@ if /I "%RUN_AFTER%"=="true" (
     )
 )
 
+
 endlocal
 exit /b 0
+            

@@ -6,6 +6,8 @@
 #include "system/instance_macro.h"
 #include "system/types/testtype.h"
 
+#ifndef INTESTING
+
 int main(void) {
 
     C_TESTTYPE_REGISTER();
@@ -27,3 +29,5 @@ int main(void) {
 
     return 0;
 }
+
+#endif
