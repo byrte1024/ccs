@@ -8,7 +8,7 @@
 #undef TYPE
 #define TYPE TESTTYPE
 
-BEGIN_CLASS(0x001b,"Test Type");
+BEGIN_CLASS(0x001b,"TestType");
 
     typedef struct TestType {
         int x;
@@ -17,7 +17,16 @@ BEGIN_CLASS(0x001b,"Test Type");
         int w;
     } TestType;
 
-    DEFINEANDWRAP_FUNCTION(0x0002, SAYHI, const char* name;, , )
+    DEFINE_FUNCTION(0x0002, SAYHI, const char* name;)
+
+    DEFINE_FUNCTION_WRAPPER(SAYHI, {
+        if(prm->name == NULL){
+            prm->code = FUN_WRONGARGS;
+            return prm;
+        }
+    } , {
+
+    })
 
     IMPL_FUNCTION(SAYHI, {
         TraceLog(LOG_INFO,TextFormat("My name is: %s",prm->name));

@@ -38,3 +38,7 @@
 
 #define CALL_R_FUNCTION(classreference, name, args) \
 EP3(F_,name,_EXECUTE_I)(classreference.instance, &((EP3(F_,name,_PRM)){ args }))
+
+#define DEFINEANDWRAP_I_FUNCTION(lfid, name, args, prelogic, postlogic) \
+    DEFINE_I_FUNCTION(lfid, name, args) \
+    DEFINE_I_FUNCTION_WRAPPER(name, prelogic, postlogic)

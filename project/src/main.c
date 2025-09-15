@@ -25,6 +25,10 @@ int main(void) {
     Class_Reference_PrintStatus(r);
 
 
+    FUNPRM(TESTTYPE_SAYHI) P = CALL_FUNCTION(TESTTYPE, TESTTYPE_SAYHI, .name = "Weee" );
+    
+    
+
     getchar();
 
     return 0;
