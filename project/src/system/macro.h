@@ -70,15 +70,11 @@
     DEFINE_FUNCTION_WRAPPER_SKELETON(name)
 
 #define CALL_FUNCTION(classname,name, args) \
-    EP5(F_,classname,_,name,_EXECUTE)(EP2(CID_,classname),&((EP5(F_,classname,_,name,_PRM)){ args }))
+    EP3(F_,name,_EXECUTE)(EP2(CID_,classname),&((EP3(F_,name,_PRM)){ args }))
 
 
 #define IMPL_FUNCTION(name, code) \
-    static void EP4(F_EXEC_,TYPE,_,name)(EP5(F_,TYPE,_,name,_PRM*) prm) \
-    { \
-    EP2(prm->c,ode) = FUN_OK; \
-    code \
-    }
+    IMPLOTHER_FUNCTION(EP3(TYPE,_,name),code)
 
 #define IMPLOTHER_FUNCTION(name, code) \
     static void EP4(F_EXEC_,TYPE,_,name)(EP3(F_,name,_PRM*) prm) \
@@ -94,7 +90,7 @@
 
 #define FUNFIND_IMPL(name) \
         case EP4(FID_,TYPE,_,name): \
-            return EP4(F_EXEC_,TYPE,_,name)
+            return EP6(F_EXEC_,TYPE,_,TYPE,_,name)
 
 #define FUNFIND_IMPLOTHER(name) \
         case EP2(FID_,name):\
@@ -126,3 +122,4 @@
       Class_System_RegisterDefinition( (ClassDef) { .id = EP2(CID_,TYPE), .name = EP3(C_,TYPE,_NAME), .hasFunction = EP3(C_,TYPE,_HASFUNCTION), .callFunction = EP3(C_,TYPE,_CALLFUNCTION) });  \
     }
 
+#define FUNPRM(name) EP3(F_,name,_PRM)*
