@@ -1,4 +1,4 @@
-# Class System Documentation
+# Class System Documentation (UNFINISHED)
 
 This system provides a macro-based framework for defining, managing, and interacting with classes and their instances in C. It allows for class registration, function wrapping, instance management, and reference counting. The system is heavily macro-driven to simplify repetitive boilerplate code.
 
@@ -6,17 +6,17 @@ This system provides a macro-based framework for defining, managing, and interac
 
 ### Core
 
-0. [Aliases](#aliases)
-1. [ID Management](#id-management)
-2. [Class Definitions](#class-definitions)
-3. [Function Definitions](#function-definitions)
-4. [Function Dispatch](#function-dispatch)
-5. [Class Instances](#class-instances)
-6. [Instance Functions](#instance-functions)
-7. [_DEF Functions](#def-functions)
-8. [Memory Streams](#memory-streams)
-9. [File Management](#file-management)
-10. [Utilities](#utilities)
+0. [Aliases](#aliases) ✅
+1. [ID Management](#id-management) ✅
+2. [Class Definitions](#class-definitions) ✅
+3. [Function Definitions](#function-definitions) ✅
+4. [Function Dispatch](#function-dispatch) ✅
+5. [Class Instances](#class-instances) ❌
+6. [Instance Functions](#instance-functions) ❌
+7. [_DEF Functions](#def-functions) ❌ 
+8. [Memory Streams](#memory-streams) ❌ 
+9. [File Management](#file-management) ❌
+10. [Utilities](#utilities) ❌
 
 ---
 
