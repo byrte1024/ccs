@@ -1,4 +1,4 @@
-name: C Project CI
+name: Build Test
 
 on:
   push:
@@ -9,31 +9,25 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install MSYS2 and Raylib
+      - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
           update: true
+          msystem: MINGW64
           install: >-
+            base-devel
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-make
             mingw-w64-x86_64-raylib
-            mingw-w64-x86_64-gdb
+            mingw-w64-x86_64-binutils
 
-      - name: Find Raylib include/lib dirs
-        id: raylib
-        shell: bash
-        run: |
-          raylib_root="/mingw64"
-          echo "raylib_root=$raylib_root" >> $GITHUB_OUTPUT
-          echo "Raylib root detected: $raylib_root"
+      - name: Run build (debug)
+        shell: msys2 {0}
+        run: ./compile.bat debug false
 
-      - name: Build (Debug)
-        shell: cmd
-        run: compile.bat debug false 
-
-      - name: Build (Release)
-        shell: cmd
-        run: compile.bat release false
+      - name: Run build (release)
+        shell: msys2 {0}
+        run: ./compile.bat release false

@@ -4,20 +4,19 @@ setlocal ENABLEDELAYEDEXPANSION
 REM === Argument Checking ===
 if "%~1"=="" (
     echo.
-    echo [!] Usage: %~nx0 [release^|debug] [true^|false] [optional: msys2_base_dir]
+    echo [!] Usage: %~nx0 [release^|debug] [true^|false]
     echo.
     exit /b 1
 )
 if "%~2"=="" (
     echo.
-    echo [!] Usage: %~nx0 [release^|debug] [true^|false] [optional: msys2_base_dir]
+    echo [!] Usage: %~nx0 [release^|debug] [true^|false]
     echo.
     exit /b 1
 )
 
 set "BUILD_TYPE=%~1"
 set "RUN_AFTER=%~2"
-set "CUSTOM_MSYS2=%~3"
 
 if /I not "%BUILD_TYPE%"=="release" if /I not "%BUILD_TYPE%"=="debug" (
     echo.
@@ -35,16 +34,9 @@ if /I not "%RUN_AFTER%"=="true" if /I not "%RUN_AFTER%"=="false" (
 )
 
 REM === MSYS2 / Raylib Settings ===
-if defined CUSTOM_MSYS2 (
-    set "MSYS2_DIR=%CUSTOM_MSYS2%"
-    echo [*] Using custom MSYS2 base directory: %MSYS2_DIR%
-) else (
-    set "MSYS2_DIR=C:\msys64\mingw64"
-    echo [*] Using default MSYS2 base directory: %MSYS2_DIR%
-)
-
-set "RAYLIB_INC=%MSYS2_DIR%\include"
-set "RAYLIB_LIB=%MSYS2_DIR%\lib"
+set "MSYS2_DIR=C:\msys64"
+set "RAYLIB_INC=%MSYS2_DIR%\mingw64\include"
+set "RAYLIB_LIB=%MSYS2_DIR%\mingw64\lib"
 
 REM === Build Flags ===
 if /I "%BUILD_TYPE%"=="debug" (
