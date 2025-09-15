@@ -12,14 +12,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Cache MSYS2
-        uses: actions/cache@v4
-        with:
-          path: C:\msys64
-          key: msys2-${{ runner.os }}-${{ hashFiles('.github/workflows/build.yml') }}
-          restore-keys: |
-            msys2-${{ runner.os }}-
-
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -31,6 +23,7 @@ jobs:
             mingw-w64-x86_64-make
             mingw-w64-x86_64-raylib
             mingw-w64-x86_64-binutils
+          cache: true
 
       - name: Build Debug
         shell: msys2 {0}
