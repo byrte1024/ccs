@@ -6,8 +6,11 @@
 #include "instance_macro.h"
 #include "IDs.h"
 #include "macro.h"
+#include "../utils/MemoryStream.h"
 
 #include <raylib.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -107,9 +110,9 @@ static inline bool Class_Reference_Status_IsEmpty(const ClassReference _referenc
 
 DEFINE_I_FUNCTION(0x0001,   CREATE       , );
 DEFINE_I_FUNCTION(0x0002,   DESTROY      , );
-DEFINE_I_FUNCTION(0x0003,   TOSTRING     , );
-DEFINE_I_FUNCTION(0x0003,   SERIALIZE    , );
-DEFINE_I_FUNCTION(0x0004,   DESERIALIZE  , );
+DEFINE_I_FUNCTION(0x0003,   TOSTRING     , MemoryStream* stream; );
+DEFINE_I_FUNCTION(0x0003,   SERIALIZE    , MemoryStream* stream; );
+DEFINE_I_FUNCTION(0x0004,   DESERIALIZE  , MemoryStream* stream; );
 
 
 DEFINE_I_FUNCTION_WRAPPER(  CREATE       , {
@@ -142,6 +145,72 @@ DEFINE_I_FUNCTION_WRAPPER(  DESTROY      , {
 
 },{
     prm->self->data = NULL;
+});
+DEFINE_I_FUNCTION_WRAPPER(  TOSTRING      , 
+
+    if(!prm->stream){
+        prm->code = FUN_WRONGARGS;
+        return prm;
+    }
+    
+    MemoryStream_WriteCstr(prm->stream, CSTRCOM("( [ "),NULL);
+    if (Class_Instance_Status_IsNull(prm->self)) {
+        MemoryStream_WriteCstr(prm->stream, CSTRCOM("??? ]{ ??? } )"),NULL);
+        return prm;
+    }
+    if(Class_Instance_Status_IsUntyped(prm->self)){
+        MemoryStream_WriteCstr(prm->stream, CSTRCOM("CID_DEF ]{ ??? } )"),NULL);
+        return prm;
+    }
+    const char* class_name = Class_System_GetDefinitionName(prm->self->cid);
+    MemoryStream_WriteCstr(prm->stream, CSTRCOM(class_name),NULL);
+    MemoryStream_WriteCstr(prm->stream, CSTRCOM(" ]{ "),NULL);
+    if (Class_Instance_Status_IsDead(prm->self)) {
+        MemoryStream_WriteCstr(prm->stream, CSTRCOM("NULL }"),NULL);
+        return prm;
+    }
+
+    size_t cur = prm->stream->cursor;
+    
+,{
+
+    if(prm->code != FUN_OK){
+        MemoryStream_WriteCstr(prm->stream, CSTRCOM("??? } )"),NULL);
+        return prm;
+    }
+    MemoryStream_WriteCstr(prm->stream, CSTRCOM(" } )"),NULL);
+    
+});
+DEFINE_I_FUNCTION_WRAPPER(  SERIALIZE     ,
+    
+    #define SYNTAX_ERROR(a) if(EP1(a)){ prm->code = FUN_ERROR; MemoryStream_Seek_Set(prm->stream, cursnap_start); return prm; }
+
+    if(!prm->stream){
+        prm->code = FUN_WRONGARGS;
+        return prm;
+    }
+
+    size_t cursnap_start = prm->stream->cursor;
+    
+    SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_BEGIN_SIZE, NULL));
+    size_t cursnap_size = prm->stream->cursor - cursnap_start;
+    SYNTAX_ERROR(MemoryStream_SetBytes(prm->stream, 0, sizeof(size_t), NULL));
+    SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_END_SIZE, NULL));
+
+    SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_BEGIN_TYPE, NULL));
+    
+
+
+    size_t cursnap_data_start = prm->stream->cursor;
+,{
+
+    if(prm->code != FUN_OK){
+        SYNTAX_ERROR(MemoryStream_Seek_Set(prm->stream, cursnap_data_start));
+
+
+        return prm;
+    }
+
 });
 
 static ClassInstance* Class_Instance_AllocateEmpty() {

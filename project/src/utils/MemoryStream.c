@@ -81,7 +81,7 @@ void MemoryStream_Log(MemoryStream* self, TraceLogLevel level)
     size_t buffer_size = limit * 2 + 32;
     char* buffer = malloc(buffer_size);
     if (!buffer) return;
-    size_t pos = snprintf(buffer, buffer_size, "\n");
+    size_t pos = snprintf(buffer, buffer_size, "");
 
     for (size_t i = 0; i < limit; i++)
     {

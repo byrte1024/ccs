@@ -30,6 +30,15 @@ static const ClassDef* Class_System_GetDefinition(const ClassID cid) {
 static bool Class_System_HasDefinition(const ClassID cid) {
     return cid != CID_DEF && class_def[cid].id == cid;
 }
+static const char* Class_System_GetDefinitionName(const ClassID cid){
+    if(cid == CID_DEF){
+        return "CID_DEF";
+    }
+    if(Class_System_HasDefinition(cid)){
+        return class_def[cid].name;
+    }
+    return "???";
+}
 static bool Class_System_RegisterDefinition(const ClassDef def) {
     if (def.id == CID_DEF) {
         TraceLog(LOG_ERROR, "Class %s has invalid id", def.name);
@@ -72,5 +81,4 @@ static bool Class_Definition_HasFunction(const ClassID id, const FunctionID fid)
     }
     return false;
 }
-
 

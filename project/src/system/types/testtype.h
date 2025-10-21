@@ -4,18 +4,35 @@
 
 #include "../macro.h"
 #include "../ClassInstance.h"
+#include <raylib.h>
 
 #undef TYPE
-#define TYPE TESTTYPE
+#define TYPE TestType
 
 BEGIN_CLASS(0x001b,"TestType");
 
-    typedef struct TestType {
-        int x;
-        int y;
-        int z;
-        int w;
-    } TestType;
+    DEFINE_I_STRUCT( 
+        P_VAR(int, x)
+        P_VAR(int, y)
+        P_VAR(int, z)
+        P_VAR(int, w)
+    )
+
+    DEFINE_CONSTRUCTOR(
+        F_GETPVAR(x) = 0;
+        F_GETPVAR(y) = 1;
+        F_GETPVAR(z) = 2;
+        F_GETPVAR(w) = 3;
+    )
+
+    DEFINE_DESTRUCTOR(
+        
+    )
+
+    DEFINE_TOSTRING(
+        MemoryStream_WriteFormat(prm->stream, "x=%d, y=%d, z=%d, w=%d", F_GETPVAR(x), F_GETPVAR(y), F_GETPVAR(z), F_GETPVAR(w));
+    )
+
 
     DEFINE_FUNCTION(0x0002, SAYHI, const char* name;)
 
@@ -32,33 +49,14 @@ BEGIN_CLASS(0x001b,"TestType");
         TraceLog(LOG_INFO,TextFormat("My name is: %s",prm->name));
     })
 
-    IMPLOTHER_FUNCTION(DEF_CREATE, {
-        ClassInstance* i = prm->self;
-
-        TestType* t = malloc(sizeof(TestType));
-        if(t == NULL){
-            prm->code = FUN_ERROR;
-            return;
-        }
-        t->x = 1;
-        t->y = 2;
-        t->z = 3;
-        t->w = 4;
-
-        i->data = t;
-    })
-    IMPLOTHER_FUNCTION(DEF_DESTROY, {
-        ClassInstance* i = prm->self;
-
-        TestType* t = i->data;
-        free(t);
-    })
-
 
     BEGIN_FUNFIND()
 
-        FUNFIND_IMPLOTHER(DEF_CREATE);
-        FUNFIND_IMPLOTHER(DEF_DESTROY);
+        FUNFIND_CONSTRUCTOR();
+        FUNFIND_DESTRUCTOR();
+        FUNFIND_TOSTRING();
+
+        FUNFIND_IMPL(GetStruct);
 
         FUNFIND_IMPL(SAYHI);
 

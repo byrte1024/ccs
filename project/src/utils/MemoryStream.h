@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -62,3 +63,22 @@ bool MemoryStream_Static_ReadChar(MemoryStream* self, size_t cursor, uint8_t** p
 bool MemoryStream_Static_ReadBytes(MemoryStream* self, size_t cursor, uint8_t** ptr_to_data_ptr, size_t count);
 
 #define CSTRCOM(string) string , strlen(string)
+
+static inline bool MemoryStream_WriteVFormat(MemoryStream* self, const char* format, va_list args) {
+    char toadd[256];
+    int len = vsnprintf(toadd, sizeof(toadd), format, args);
+    if (len < 0) return false;
+
+    if ((size_t)len >= sizeof(toadd)) len = sizeof(toadd) - 1;
+    return MemoryStream_WriteCstr(self, toadd, len, NULL);
+}
+
+
+static inline bool MemoryStream_WriteFormat(MemoryStream* self, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    bool ret = MemoryStream_WriteVFormat(self, format, args);
+    va_end(args);
+    return ret;
+}
+

@@ -5,6 +5,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
+#define P1(a) a
 #define P2(a, b) a##b
 #define P3(a, b, c) a##b##c
 #define P4(a, b, c, d) a##b##c##d
@@ -13,6 +14,7 @@
 #define P7(a, b, c, d, e, f, g) a##b##c##d##e##f##g
 #define P8(a, b, c, d, e, f, g, h) a##b##c##d##e##f##g##h
 
+#define EP1(a) P1(a)
 #define EP2(a, b) P2(a, b)
 #define EP3(a, b, c) P3(a, b, c)
 #define EP4(a, b, c, d) P4(a, b, c, d)
@@ -21,10 +23,14 @@
 #define EP7(a, b, c, d, e, f, g) P7(a, b, c, d, e, f, g)
 #define EP8(a, b, c, d, e, f, g, h) P8(a, b, c, d, e, f, g, h)
 
+#define STR(x) #x
+#define XSTR(x) STR(x)
+
 #define FUN_OK ((char)0xFF)
 #define FUN_NOTFOUND ((char)0x00)
 #define FUN_ERROR ((char)0x02)
 #define FUN_WRONGARGS ((char)0x01)
+#define FUN_STACKOVER ((char)0x03)
 
 //Naming convention macros
 
@@ -63,6 +69,7 @@
         EP4(FID_LOCAL_,TYPE,_,name) = lfid, \
         EP4(FID_,TYPE,_,name) = COMPOSE_FUNCTIONID(EP4(FID_LOCAL_,TYPE,_,name),EP2(CID_,TYPE)) \
     }; \
+    const char* EP5(F_,TYPE,_,name,_NAME) = XSTR(name); \
     typedef struct EP5(F_,TYPE,_,name,_PRM) { \
         char code; \
         args \
@@ -123,3 +130,17 @@
     }
 
 #define FUNPRM(name) EP3(F_,name,_PRM)*
+
+#define TOKEN_BEGIN_SIZE ((char)'(')
+#define TOKEN_END_SIZE ((char)')')
+
+#define TOKEN_BEGIN_TYPE ((char)'[')
+#define TOKEN_END_TYPE ((char)']')
+
+#define TOKEN_BEGIN_DATA ((char)'{')
+#define TOKEN_END_DATA ((char)'}')
+
+#define TOKEN_BEGIN_VARIABLE ((char)'<')
+#define TOKEN_END_VARIABLE ((char)'>')
+
+#define TOKEN_NULL ((char)'N')
