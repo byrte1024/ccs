@@ -1,3 +1,4 @@
+#ifndef INTESTING
 
 #include <raylib.h>
 #include <stdio.h>
@@ -7,7 +8,7 @@
 #include "system/types/testtype.h"
 #include "utils/MemoryStream.h"
 
-#ifndef INTESTING
+
 
 int main(void) {
 
