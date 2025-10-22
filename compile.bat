@@ -41,17 +41,17 @@ set "RAYLIB_LIB=%MSYS2_DIR%\mingw64\lib"
 REM === Build Flags ===
 if /I "%BUILD_TYPE%"=="debug" (
     set "OUT_DIR=build\debug"
-    set "CFLAGS=-g -O0 -Wall -Wextra -I"%RAYLIB_INC%"" 
+    set "CFLAGS=-std=c23 -g -O0 -Wall -Wextra -I"%RAYLIB_INC%"" 
     set "LDFLAGS=-g -L"%RAYLIB_LIB%" -lraylib -lopengl32 -lgdi32 -lwinmm -lkernel32"
     echo [*] Build Mode: DEBUG
 ) else if /I "%BUILD_TYPE%"=="release" (
     set "OUT_DIR=build\release"
-    set "CFLAGS=-O2 -I"%RAYLIB_INC%"" 
+    set "CFLAGS=-std=c23 -O2 -I"%RAYLIB_INC%"" 
     set "LDFLAGS=-L"%RAYLIB_LIB%" -lraylib -lopengl32 -lgdi32 -lwinmm -lkernel32"
     echo [*] Build Mode: RELEASE
 ) else (
     set "OUT_DIR=build\test"
-    set "CFLAGS=-g -O0 -Wall -Wextra -DINTESTING=1 -I"%RAYLIB_INC%"" 
+    set "CFLAGS=-std=c23 -g -O0 -Wall -Wextra -DINTESTING=1 -I"%RAYLIB_INC%"" 
     set "LDFLAGS=-g -L"%RAYLIB_LIB%" -lraylib -lopengl32 -lgdi32 -lwinmm -lkernel32"
     echo [*] Build Mode: TEST
 )

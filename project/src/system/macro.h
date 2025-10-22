@@ -23,6 +23,8 @@
 #define EP7(a, b, c, d, e, f, g) P7(a, b, c, d, e, f, g)
 #define EP8(a, b, c, d, e, f, g, h) P8(a, b, c, d, e, f, g, h)
 
+#define COMMA ,
+
 #define STR(x) #x
 #define XSTR(x) STR(x)
 
@@ -76,9 +78,42 @@
     } EP5(F_,TYPE,_,name,_PRM); \
     DEFINE_FUNCTION_WRAPPER_SKELETON(name)
 
-#define CALL_FUNCTION(classname,name, args) \
-    EP3(F_,name,_EXECUTE)(EP2(CID_,classname),&((EP3(F_,name,_PRM)){ args }))
+    
+#define DEFINE_STATIC_VAR(type, name, ...) \
+    EP1(type) EP5(TYPE,_,SVAR,_,name)__VA_ARGS__
 
+#define IMPL_STATIC_VAR(type, name, ...) \
+    extern EP1(type) EP5(TYPE,_,SVAR,_,name)
+
+
+
+#define DEFINE_FAST_FUNCTION(name, argsStruct, ...) \
+    enum { \
+        EP4(FID_LOCAL_,TYPE,_,name) = 0xFFFF, \
+        EP4(FID_,TYPE,_,name) = COMPOSE_FUNCTIONID(EP4(FID_LOCAL_,TYPE,_,name),EP2(CID_,TYPE)) \
+    }; \
+    const char* EP5(F_,TYPE,_,name,_NAME) = XSTR(name); \
+    typedef struct EP5(F_,TYPE,_,name,_PRM) { \
+        char code; \
+        argsStruct \
+    } EP5(F_,TYPE,_,name,_PRM); \
+    static inline EP5(F_,TYPE,_,name,_PRM*) EP5(F_,TYPE,_,name,_EXECUTE)(EP5(F_,TYPE,_,name,_PRM*) prm) \
+    { \
+        __VA_ARGS__ \
+        return prm; \
+    }
+
+
+#define P_SVAR(type, name) EP5(type,_,SVAR,_,name)
+
+#define SV P_SVAR
+#define TSV(name) EP5(TYPE,_,SVAR,_,name)
+
+#define CALL_FUNCTION(classname,name, ...) \
+    EP3(F_,name,_EXECUTE)(EP2(CID_,classname),&((EP3(F_,name,_PRM)){ __VA_ARGS__  }))
+
+#define CALL_FAST_FUNCTION(classname, name, ...)\
+    EP5(F_,classname,_,name,_EXECUTE)(&((EP5(F_,classname,_,name,_PRM)){ __VA_ARGS__ }))
 
 #define IMPL_FUNCTION(name, code) \
     IMPLOTHER_FUNCTION(EP3(TYPE,_,name),code)
@@ -129,6 +164,13 @@
       Class_System_RegisterDefinition( (ClassDef) { .id = EP2(CID_,TYPE), .name = EP3(C_,TYPE,_NAME), .hasFunction = EP3(C_,TYPE,_HASFUNCTION), .callFunction = EP3(C_,TYPE,_CALLFUNCTION) });  \
     }
 
+#define DEFINE_STRUCT(vals) \
+    typedef struct EP2(S_,TYPE) \
+    { \
+        vals \
+            \
+    } EP2(S_,TYPE); \
+
 #define FUNPRM(name) EP3(F_,name,_PRM)*
 
 #define TOKEN_BEGIN_SIZE ((char)'(')
@@ -144,3 +186,6 @@
 #define TOKEN_END_VARIABLE ((char)'>')
 
 #define TOKEN_NULL ((char)'N')
+
+#define CF CALL_FUNCTION
+#define CFF CALL_FAST_FUNCTION

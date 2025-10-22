@@ -16,7 +16,7 @@ typedef struct ClassDef {
     void (*callFunction)(FunCall*);
 } ClassDef;
 
-static ClassDef class_def[CID_MAX] = { 0 };
+inline ClassDef class_def[CID_MAX] = { 0 };
 
 #undef TYPE
 #define TYPE DEF
@@ -82,3 +82,5 @@ static bool Class_Definition_HasFunction(const ClassID id, const FunctionID fid)
     return false;
 }
 
+DEFINE_FUNCTION(0x0010,   INITIALIZE      , );
+DEFINE_FUNCTION_WRAPPER(INITIALIZE, , )

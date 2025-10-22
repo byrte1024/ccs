@@ -35,23 +35,23 @@
     DEFINE_FUNCTION_WRAPPER_SKELETON(name) \
     static inline EP5(F_,TYPE,_,name,_PRM*) EP5(F_,TYPE,_,name,_EXECUTE_I)( ClassInstance* instance , EP5(F_,TYPE,_,name,_PRM*) PRM);
 
-#define CALL_I_FUNCTION(classinstance,name, args) \
-    EP3(F_,name,_EXECUTE_I)(classinstance, &((EP3(F_,name,_PRM)){ args }))
+#define CALL_I_FUNCTION(classinstance,name, ...) \
+    EP3(F_,name,_EXECUTE_I)(classinstance, &((EP3(F_,name,_PRM)){ __VA_ARGS__  }))
 
-#define CALL_R_FUNCTION(classreference, name, args) \
-    EP3(F_,name,_EXECUTE_I)(classreference.instance, &((EP3(F_,name,_PRM)){ args }))
+#define CALL_R_FUNCTION(classreference, name, ...) \
+    EP3(F_,name,_EXECUTE_I)(classreference.instance, &((EP3(F_,name,_PRM)){ __VA_ARGS__  }))
 
 #define DEFINEANDWRAP_I_FUNCTION(lfid, name, args, prelogic, postlogic) \
     DEFINE_I_FUNCTION(lfid, name, args) \
     DEFINE_I_FUNCTION_WRAPPER(name, prelogic, postlogic)
 
 #define DEFINE_I_STRUCT(vals) \
-    typedef struct EP2(S_,TYPE) \
+    typedef struct EP2(S_I_,TYPE) \
     { \
         vals \
             \
-    } EP2(S_,TYPE); \
-    DEFINE_I_FUNCTION(LFID_GETSTRUCT,GetStruct, EP2(S_,TYPE)* EP1(TYPE); ) \
+    } EP2(S_I_,TYPE); \
+    DEFINE_I_FUNCTION(LFID_GETSTRUCT,GetStruct, EP2(S_I_,TYPE)* EP1(TYPE); ) \
     DEFINE_I_FUNCTION_WRAPPER(GetStruct, \
         if(!Class_Instance_Status_IsAlive(prm->self) || !Class_Instance_Status_IsTyped(prm->self)) \
         { \
@@ -77,12 +77,12 @@
     IMPLOTHER_FUNCTION(DEF_CREATE, \
     { \
         ClassInstance* i = prm->self; \
-        EP2(S_,TYPE)* t = malloc(sizeof(EP2(S_,TYPE))); \
+        EP2(S_I_,TYPE)* t = malloc(sizeof(EP2(S_I_,TYPE))); \
         if(t == NULL){ \
             prm->code = FUN_ERROR; \
             return; \
         } \
-        memset(t,0,sizeof(EP2(S_,TYPE))); \
+        memset(t,0,sizeof(EP2(S_I_,TYPE))); \
         EP1(CDD)\
         \
         i->data = t; \
@@ -99,7 +99,7 @@
     IMPLOTHER_FUNCTION(DEF_DESTROY, \
         { \
         ClassInstance* i = prm->self; \
-        EP2(S_,TYPE)* t = i->data; \
+        EP2(S_I_,TYPE)* t = i->data; \
         EP1(CDD) \
         free(t);\
     })
@@ -108,7 +108,7 @@
     IMPLOTHER_FUNCTION(DEF_TOSTRING, \
         { \
         ClassInstance* i = prm->self; \
-        EP2(S_,TYPE)* t = i->data; \
+        EP2(S_I_,TYPE)* t = i->data; \
         MemoryStream* stream = prm->stream; \
         EP1(CDD) \
     })

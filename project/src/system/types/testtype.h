@@ -11,6 +11,8 @@
 
 BEGIN_CLASS(0x001b,"TestType");
 
+    DEFINE_STATIC_VAR(int, saa);
+
     DEFINE_I_STRUCT( 
         P_VAR(int, x)
         P_VAR(int, y)
