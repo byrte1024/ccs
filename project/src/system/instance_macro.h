@@ -73,7 +73,7 @@
 #define P_VAR(type, name) \
     PRIMITIVE_VARIABLE(type, name)
 
-#define DEFINE_CONSTRUCTOR(CDD) \
+#define IMPL_CONSTRUCTOR(...) \
     IMPLOTHER_FUNCTION(DEF_CREATE, \
     { \
         ClassInstance* i = prm->self; \
@@ -83,7 +83,7 @@
             return; \
         } \
         memset(t,0,sizeof(EP2(S_I_,TYPE))); \
-        EP1(CDD)\
+        EP1(__VA_ARGS__)\
         \
         i->data = t; \
     } \
@@ -95,22 +95,22 @@
 #define F_GETPVAR(var) \
     C_GET_PRIMITIVE(var)
 
-#define DEFINE_DESTRUCTOR(CDD) \
+#define IMPL_DESTRUCTOR(...) \
     IMPLOTHER_FUNCTION(DEF_DESTROY, \
         { \
         ClassInstance* i = prm->self; \
         EP2(S_I_,TYPE)* t = i->data; \
-        EP1(CDD) \
+        EP1(__VA_ARGS__) \
         free(t);\
     })
 
-#define DEFINE_TOSTRING(CDD) \
+#define IMPL_TOSTRING(...) \
     IMPLOTHER_FUNCTION(DEF_TOSTRING, \
         { \
         ClassInstance* i = prm->self; \
         EP2(S_I_,TYPE)* t = i->data; \
         MemoryStream* stream = prm->stream; \
-        EP1(CDD) \
+        EP1(__VA_ARGS__)\
     })
 
 #define FUNFIND_CONSTRUCTOR() \

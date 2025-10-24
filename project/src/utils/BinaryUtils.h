@@ -42,11 +42,6 @@ static uint64_t nearest_power_of_2(uint64_t x) {
     return (next - x) < (x - prev) ? next : prev;
 }
 
-// Check if a number is a power of 2 (non-zero)
-static bool is_power_of_2(uint64_t x) {
-    return (x != 0) && ((x & (x - 1)) == 0);
-}
-
 static void charToHexChars(const unsigned char c, char hex[2]) {
     const char hexDigits[] = "0123456789ABCDEF";
 
@@ -55,4 +50,11 @@ static void charToHexChars(const unsigned char c, char hex[2]) {
 
     // low nibble (last 4 bits)
     hex[1] = hexDigits[c & 0x0F];
+}
+
+
+static int ilog2(unsigned int v) {
+    int r = 0;
+    while (v > 1) { v >>= 1; ++r; }
+    return r;
 }

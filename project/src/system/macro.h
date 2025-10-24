@@ -5,6 +5,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
+#define P(...) __VA_ARGS__
 #define P1(a) a
 #define P2(a, b) a##b
 #define P3(a, b, c) a##b##c
@@ -14,6 +15,7 @@
 #define P7(a, b, c, d, e, f, g) a##b##c##d##e##f##g
 #define P8(a, b, c, d, e, f, g, h) a##b##c##d##e##f##g##h
 
+#define EP(...) P(__VA_ARGS__)
 #define EP1(a) P1(a)
 #define EP2(a, b) P2(a, b)
 #define EP3(a, b, c) P3(a, b, c)
@@ -80,10 +82,8 @@
 
     
 #define DEFINE_STATIC_VAR(type, name, ...) \
-    EP1(type) EP5(TYPE,_,SVAR,_,name)__VA_ARGS__
+    inline EP1(type) EP5(TYPE,_,SVAR,_,name)__VA_ARGS__
 
-#define IMPL_STATIC_VAR(type, name, ...) \
-    extern EP1(type) EP5(TYPE,_,SVAR,_,name)
 
 
 
@@ -115,14 +115,14 @@
 #define CALL_FAST_FUNCTION(classname, name, ...)\
     EP5(F_,classname,_,name,_EXECUTE)(&((EP5(F_,classname,_,name,_PRM)){ __VA_ARGS__ }))
 
-#define IMPL_FUNCTION(name, code) \
-    IMPLOTHER_FUNCTION(EP3(TYPE,_,name),code)
+#define IMPL_FUNCTION(name, ...) \
+    IMPLOTHER_FUNCTION(EP3(TYPE,_,name),__VA_ARGS__)
 
-#define IMPLOTHER_FUNCTION(name, code) \
+#define IMPLOTHER_FUNCTION(name, ...) \
     static void EP4(F_EXEC_,TYPE,_,name)(EP3(F_,name,_PRM*) prm) \
     { \
     EP2(prm->c,ode) = FUN_OK; \
-    code \
+    EP(__VA_ARGS__) \
     }
 
 #define BEGIN_FUNFIND() \
@@ -159,9 +159,9 @@
     { \
         return EP3(C_,TYPE,_FUNFIND)(fid) != NULL; \
     } \
-    static void EP3(C_,TYPE,_REGISTER)() \
+    static bool EP3(C_,TYPE,_REGISTER)() \
     { \
-      Class_System_RegisterDefinition( (ClassDef) { .id = EP2(CID_,TYPE), .name = EP3(C_,TYPE,_NAME), .hasFunction = EP3(C_,TYPE,_HASFUNCTION), .callFunction = EP3(C_,TYPE,_CALLFUNCTION) });  \
+      return Class_System_RegisterDefinition( (ClassDef) { .id = EP2(CID_,TYPE), .name = EP3(C_,TYPE,_NAME), .hasFunction = EP3(C_,TYPE,_HASFUNCTION), .callFunction = EP3(C_,TYPE,_CALLFUNCTION) });  \
     }
 
 #define DEFINE_STRUCT(vals) \
@@ -170,6 +170,19 @@
         vals \
             \
     } EP2(S_,TYPE); \
+    DEFINE_STATIC_VAR(EP2(S_,TYPE), )
+
+#define IMPL_INITTER(...) \
+    IMPLOTHER_FUNCTION(DEF_INITIALIZE, { \
+        __VA_ARGS__\
+    })
+
+#define CLASS_STRUCT(type) EP2(S_,type)
+
+#define CLASS_STATIC_STRUCT(type) EP1(P_SVAR(EP1(type), ))
+
+#define CSS(type) EP4(type,_,SVAR,_)
+#define TCSS EP4(TYPE,_,SVAR,_)
 
 #define FUNPRM(name) EP3(F_,name,_PRM)*
 
@@ -189,3 +202,6 @@
 
 #define CF CALL_FUNCTION
 #define CFF CALL_FAST_FUNCTION
+
+#define FUNFIND_INITTER() \
+    FUNFIND_IMPLOTHER(DEF_INITIALIZE);
