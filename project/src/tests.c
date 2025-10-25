@@ -77,7 +77,7 @@ void TestTraceLog(int logLevel, const char *text, va_list args) {
 int count_occupied_cells(void) {
     int count = 0;
     for (int i = 0; i < POOL_AREA; i++) {
-        if (CSS(CentralPixelPool).cells[i].isOccupied) {
+        if (CSS(CentralPixelPool).occupied[i]) {
             count++;
         }
     }
@@ -86,11 +86,11 @@ int count_occupied_cells(void) {
 
 // Helper function to print pool state
 void print_pool_state(const char* label) {
+    return;
     printf("%s:\n", label);
     for (int y = 0; y < POOL_SIZE; y++) {
         for (int x = 0; x < POOL_SIZE; x++) {
-            Cell cell = CSS(CentralPixelPool).cells[POOL2D_TO_POOL1D(x, y)];
-            printf("%c", cell.isOccupied ? 'X' : '-');
+            printf("%c", CSS(CentralPixelPool).occupied[POOL2D_TO_POOL1D(x, y)] ? 'X' : '-');
         }
         printf("\n");
     }
@@ -106,10 +106,6 @@ int test_initialization(void) {
     // Verify pool is empty
     int occupied = count_occupied_cells();
     TEST_ASSERT(occupied == 0, "Pool starts empty");
-    
-    // Verify free lists are initialized
-    TEST_ASSERT(CSS(CentralPixelPool).freeLists[MAXLEVEL] != NULL, 
-                "Top level free list initialized");
     
     TEST_END();
     return 0;
@@ -137,6 +133,8 @@ int test_single_allocation(void) {
     // Evict and verify cleanup
     CF(CentralPixelPool, CentralPixelPool_evictHandle, .handle = &handle);
     TEST_ASSERT(!handle.valid, "Handle invalid after eviction");
+    
+    print_pool_state("After eviction");
     
     occupied = count_occupied_cells();
     TEST_ASSERT(occupied == 0, "Pool empty after eviction");
@@ -232,6 +230,8 @@ int test_alloc_dealloc_cycle(void) {
         CF(CentralPixelPool, CentralPixelPool_evictHandle, .handle = &handle);
         TEST_ASSERT(!handle.valid, "Deallocation successful in cycle");
     }
+
+    print_pool_state("After constant deallocation");
     
     int occupied = count_occupied_cells();
     TEST_ASSERT(occupied == 0, "Pool empty after cycles");
@@ -365,14 +365,12 @@ int test_maximum_block_size(void) {
     TEST_START("Maximum Block Size");
     
     CPP_Handle handle = {0};
-
-    print_pool_state("After 8 allocations");
     
     // Request full pool
     CF(CentralPixelPool, CentralPixelPool_rentHandle, 
        .width = POOL_SIZE, .height = POOL_SIZE, .out_handle = &handle);
     
-    TEST_ASSERT(!handle.valid, "Maximum size fails");
+    TEST_ASSERT(handle.valid, "Maximum size should pass");
     
     int occupied = count_occupied_cells();
     

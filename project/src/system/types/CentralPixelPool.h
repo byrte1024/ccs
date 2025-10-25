@@ -15,9 +15,7 @@
 #define LOG2_POW2(n) (__builtin_ctz(n))
 #define INTERNAL_POOL_SIZE (128)
 //the size before an edit rect just uses the main pool buffer
-#define INTERNAL_POOL_EDITRECT_SIZE  (INTERNAL_POOL_SIZE / 2)
 #define POOL_AREA (INTERNAL_POOL_SIZE * INTERNAL_POOL_SIZE)
-#define EDITRECT_AREA (INTERNAL_POOL_EDITRECT_SIZE * INTERNAL_POOL_EDITRECT_SIZE)
 enum { POOL_SIZE = INTERNAL_POOL_SIZE };
 enum { POOL_SHIFT = LOG2_POW2(POOL_SIZE) };
 
@@ -44,12 +42,6 @@ _Static_assert((1 << POOL_SHIFT) == POOL_SIZE, "POOL_SHIFT and POOL_SIZE mismatc
 #define LOCALY_TO_POOLY(localY, rectY) (localY + rectY)
 #define LOCAL2D_TO_POOL1D(localX, localY, rectX, rectY) (POOL2D_TO_POOL1D(localX + rectX, localY + rectY))
 
-// Quadtree allocator structures
-typedef struct FreeBlock {
-    int x, y;           // Position in pool
-    struct FreeBlock* next;
-} FreeBlock;
-
 #undef TYPE
 #define TYPE CentralPixelPool
 
@@ -60,7 +52,6 @@ typedef struct Cell {
     unsigned char a;
 
     char mass;
-    bool isOccupied;
     bool isOpaque;
 
 } Cell;
@@ -71,59 +62,396 @@ typedef struct CPP_Handle {
     int rectY;
     int rectWidth;
     int rectHeight;
+    int level;
     bool valid;
 
 } CPP_Handle;
 
+typedef struct RectangleInt {
+    int x;
+    int y;
+    int width;
+    int height;
+} RectangleInt;
+
+
+#define NODESTATE_ALLOCATED ((char)0x02) //this exact node has been allocated
+#define NODESTATE_PARENT ((char)0x01) //this node contains other nodes which have been allocated
+#define NODESTATE_FREE ((char)0x00) //this node is free to be allocated
+typedef struct NodeState {
+    char state;
+    char largest_freeblock; //only relavent when NODESTATE_PARENT, represents the largest free block in the node, uses levels. level = charmax means it is fully filled.
+} NodeState;
+
+static inline int getNodeSize(int level){
+    return MINBLOCKSIZE << level;
+}
+
+static inline int getNodeCount(int level) {
+    int blockSize = MINBLOCKSIZE << level;     // block size at this level
+    int blocksPerDim = POOL_SIZE / blockSize;  // number of blocks per row/column
+    return blocksPerDim * blocksPerDim;        // total blocks
+}
+
+
+//where in the nodeStates[MAXLEVEL+1] array is the node at level 'level'
+static inline int getNodeIndex(int poolX, int poolY, int level){
+    int nodeSize = getNodeSize(level);
+    int nodeX = poolX / nodeSize;
+    int nodeY = poolY / nodeSize;
+    return (nodeY * (POOL_SIZE / nodeSize)) + nodeX;
+}
 
 BEGIN_CLASS(0xA001, Central Pixel Pool);
 
     DEFINE_STRUCT(
 
         Cell* cells;
+        bool* occupied;
         char* rgbaData;
 
         bool editRectActive;
-        Rectangle editRect;
+        RectangleInt editRect;
         char* editRectRGBA;
 
-        // Quadtree allocator data
-        // freeLists[level] contains all free blocks of size (MINBLOCKSIZE << level)
-        // level 0 = 2x2, level 1 = 4x4, ..., level MAXLEVEL = 128x128
-        FreeBlock* freeLists[MAXLEVEL + 1];
-        
-        // Block pool for free list nodes (preallocated to avoid malloc in hot path)
-        FreeBlock* blockPool;
-        int blockPoolSize;
-        int blockPoolUsed;
+        NodeState* nodeStates[MAXLEVEL + 1];
 
     );
 
-    DEFINE_FUNCTION(0x001A, rentHandle, int width; int height; CPP_Handle* out_handle)
-    DEFINE_FUNCTION_WRAPPER(rentHandle, {
-        if(prm->width <= 0 || prm->height <= 0 || prm->width > POOL_SIZE || prm->height > POOL_SIZE || prm->out_handle == NULL){
-            prm->code = FUN_WRONGARGS;
-            return prm;
-        }
-    },{
-        if(!prm->out_handle->valid){
-            prm->code = FUN_ERROR;
-            return prm;
-        }
-    })
+    DEFINE_FUNCTION(0x0010, rentHandle, int width; int height; CPP_Handle* out_handle)
+        DEFINE_FUNCTION_WRAPPER(rentHandle, {
+            if(prm->width <= 0 || prm->height <= 0 || prm->width > POOL_SIZE || prm->height > POOL_SIZE || prm->out_handle == NULL){
+                prm->code = FUN_WRONGARGS;
+                return prm;
+            }
+        },{
+            if(!prm->out_handle->valid){
+                prm->code = FUN_ERROR;
+                return prm;
+            }
+        })
+        IMPL_FUNCTION(rentHandle, {
+            int width = prm->width;
+            int height = prm->height;
+            int bigger = width > height ? width : height;
+            width = next_power_of_2(bigger);
+            height = next_power_of_2(bigger);
+        
+            if (width < MINBLOCKSIZE) width = MINBLOCKSIZE;
+            if (height < MINBLOCKSIZE) height = MINBLOCKSIZE;
+            CPP_Handle* out_handle = prm->out_handle;
+        
+            int levelNeeded = LOG2_POW2(width) - MINBLOCKLOG;
+        
+            if (levelNeeded > MAXLEVEL) {
+                prm->code = FUN_ERROR;
+                return;
+            }
+        
+            int foundX = -1;
+            int foundY = -1;
+        
+            int searchRegionX = 0;
+            int searchRegionY = 0;
+            int searchRegionWidth = POOL_SIZE;
+            int searchRegionHeight = POOL_SIZE;
+        
+            bool candidateConfirmed = false;
+        
+            for (int l = MAXLEVEL; l >= levelNeeded; l--) {
+                int blockSize = getNodeSize(l);
+        
+                bool foundCandidate = false;
+        
+                for (int x = searchRegionX; x < searchRegionX + searchRegionWidth; x += blockSize) {
+                    for (int y = searchRegionY; y < searchRegionY + searchRegionHeight; y += blockSize) {
+                        int nodeIndex = getNodeIndex(x, y, l);
+        
+                        if (TCSS.nodeStates[l][nodeIndex].state == NODESTATE_FREE) {
+                            foundCandidate = true;
+                            searchRegionX = x;
+                            searchRegionY = y;
+                            searchRegionWidth = blockSize;
+                            searchRegionHeight = blockSize;
+        
+                            if (l == levelNeeded) {
+                                candidateConfirmed = true;
+                                foundX = x;
+                                foundY = y;
+                                break;
+                            }
+                            break;
+                        } else if (TCSS.nodeStates[l][nodeIndex].state == NODESTATE_PARENT) {
+                            int largest_freeblock = TCSS.nodeStates[l][nodeIndex].largest_freeblock;
+                            if (largest_freeblock >= levelNeeded) {
+                                foundCandidate = true;
+                                searchRegionX = x;
+                                searchRegionY = y;
+                                searchRegionWidth = blockSize;
+                                searchRegionHeight = blockSize;
+                                break;
+                            }
+                        }
+                    }
+                    if (foundCandidate) break;
+                }
+            }
+        
+            if (!candidateConfirmed || foundX < 0 || foundY < 0) {
+                prm->code = FUN_ERROR;
+                return;
+            }
+        
+            // --- perform allocation and update node states upwards ---
+            const char CHAR_FULL = (char)0xFF; // sentinel: fully filled (no free blocks) 
+        
+            // mark the allocated node 
+            int allocIndex = getNodeIndex(foundX, foundY, levelNeeded);
+            TCSS.nodeStates[levelNeeded][allocIndex].state = NODESTATE_ALLOCATED;
+            // only meaningful for parents, but set to full for clarity 
+            TCSS.nodeStates[levelNeeded][allocIndex].largest_freeblock = CHAR_FULL;
+        
+            // update parents up to MAXLEVEL
+            for (int l = levelNeeded + 1; l <= MAXLEVEL; ++l) {
+                int parentBlockSize = getNodeSize(l);
+                int parentX = (foundX / parentBlockSize) * parentBlockSize;
+                int parentY = (foundY / parentBlockSize) * parentBlockSize;
+                int parentIndex = getNodeIndex(parentX, parentY, l);
+        
+                // Parent contains children at level (l-1) with childSize
+                int childLevel = l - 1;
+                int childSize = getNodeSize(childLevel);
+        
+                // compute the largest free block among the four children
+                char parentLargest = CHAR_FULL; // start as 'no free'
+        
+                for (int cx = 0; cx <= 1; ++cx) {
+                    for (int cy = 0; cy <= 1; ++cy) {
+                        int childX = parentX + cx * childSize;
+                        int childY = parentY + cy * childSize;
+                        int childIndex = getNodeIndex(childX, childY, childLevel);
+                        char candidate = CHAR_FULL;
+        
+                        char cstate = TCSS.nodeStates[childLevel][childIndex].state;
+                        if (cstate == NODESTATE_FREE) {
+                            candidate = (char)childLevel; // child is entirely free at childLevel
+                        } else if (cstate == NODESTATE_PARENT) {
+                            candidate = TCSS.nodeStates[childLevel][childIndex].largest_freeblock;
+                        } else { // NODESTATE_ALLOCATED or unknown 
+                            candidate = CHAR_FULL; // no free inside this child 
+                        }
+        
+                        if (candidate != CHAR_FULL) {
+                            if (parentLargest == CHAR_FULL || candidate > parentLargest) {
+                                parentLargest = candidate;
+                            }
+                        }
+                    }
+                }
+        
+                // set parent state to indicate it contains allocated nodes 
+                TCSS.nodeStates[l][parentIndex].state = NODESTATE_PARENT;
+                TCSS.nodeStates[l][parentIndex].largest_freeblock = parentLargest;
+            }
 
-    DEFINE_FUNCTION(0x001B, evictHandle, CPP_Handle* handle )
-    DEFINE_FUNCTION_WRAPPER(evictHandle, {
-        if(prm->handle == NULL || !prm->handle->valid){
-            prm->code = FUN_WRONGARGS;
-            return prm;
-        }
-    }, {
-        if(prm->handle->valid){
-            prm->code = FUN_ERROR;
-            return prm;
-        }
-    })
+            //update occupancy values
+            int index = POOL2D_TO_POOL1D(foundX,foundY);
+            for(int y = foundY; y < foundY + height; y++){
+                for(int x = foundX; x < foundX + width; x++){
+                    TCSS.occupied[index++] = true;
+                }
+                index = index + POOL_SIZE - width;
+            }
+        
+            // Fill out the handle info 
+            out_handle->rectX = foundX;
+            out_handle->rectY = foundY;
+            out_handle->rectWidth = width;
+            out_handle->rectHeight = height;
+            out_handle->level = levelNeeded;
+            out_handle->valid = true;
+        
+            prm->code = FUN_OK;
+            return;
+        })
+        
+        
+
+    DEFINE_FUNCTION(0x0011, evictHandle, CPP_Handle* handle )
+        DEFINE_FUNCTION_WRAPPER(evictHandle, {
+            if(prm->handle == NULL || !prm->handle->valid){
+                prm->code = FUN_WRONGARGS;
+                return prm;
+            }
+        }, {
+            if(prm->handle->valid){
+                prm->code = FUN_ERROR;
+                return prm;
+            }
+        })    
+        IMPL_FUNCTION(evictHandle, {
+            CPP_Handle* handle = prm->handle;
+        
+            int x = handle->rectX;
+            int y = handle->rectY;
+            int level = handle->level;
+        
+            const char CHAR_FULL = (char)0xFF;
+        
+            // Mark the node as free
+            int nodeIndex = getNodeIndex(x, y, level);
+            TCSS.nodeStates[level][nodeIndex].state = NODESTATE_FREE;
+            TCSS.nodeStates[level][nodeIndex].largest_freeblock = level; // entire node is free
+        
+            // Update parents up to MAXLEVEL
+            for (int l = level + 1; l <= MAXLEVEL; ++l) {
+                int parentBlockSize = getNodeSize(l);
+                int parentX = (x / parentBlockSize) * parentBlockSize;
+                int parentY = (y / parentBlockSize) * parentBlockSize;
+                int parentIndex = getNodeIndex(parentX, parentY, l);
+        
+                int childLevel = l - 1;
+                int childSize = getNodeSize(childLevel);
+        
+                char parentLargest = CHAR_FULL;
+                bool anyAllocated = false;
+        
+                for (int cx = 0; cx <= 1; ++cx) {
+                    for (int cy = 0; cy <= 1; ++cy) {
+                        int childX = parentX + cx * childSize;
+                        int childY = parentY + cy * childSize;
+                        int childIndex = getNodeIndex(childX, childY, childLevel);
+        
+                        char cstate = TCSS.nodeStates[childLevel][childIndex].state;
+                        char candidate = CHAR_FULL;
+        
+                        if (cstate == NODESTATE_FREE) {
+                            candidate = (char)childLevel;
+                        } else if (cstate == NODESTATE_PARENT) {
+                            candidate = TCSS.nodeStates[childLevel][childIndex].largest_freeblock;
+                            anyAllocated = true;
+                        } else if (cstate == NODESTATE_ALLOCATED) {
+                            anyAllocated = true;
+                        }
+        
+                        if (candidate != CHAR_FULL) {
+                            if (parentLargest == CHAR_FULL || candidate > parentLargest) {
+                                parentLargest = candidate;
+                            }
+                        }
+                    }
+                }
+        
+                // Update parent state 
+                if (!anyAllocated) {
+                    TCSS.nodeStates[l][parentIndex].state = NODESTATE_FREE;
+                    TCSS.nodeStates[l][parentIndex].largest_freeblock = (char)l;
+                } else {
+                    TCSS.nodeStates[l][parentIndex].state = NODESTATE_PARENT;
+                    TCSS.nodeStates[l][parentIndex].largest_freeblock = parentLargest;
+                }
+            }
+
+            //update occupancy values
+            int index = POOL2D_TO_POOL1D(handle->rectX,handle->rectY);
+            for(int y = handle->rectY; y < handle->rectY + handle->rectHeight; y++){
+                for(int x = handle->rectX; x < handle->rectX + handle->rectWidth; x++){
+                    TCSS.occupied[index++] = false;
+                }
+                index = index + POOL_SIZE - handle->rectWidth;
+            }
+        
+            // Mark handle invalid 
+            handle->valid = false;
+        
+            prm->code = FUN_OK;
+        })
+
+    DEFINE_FUNCTION(0x001A, startRect, RectangleInt startas )
+        DEFINE_FUNCTION_WRAPPER(startRect, {
+            if(prm->startas.x < 0 || prm->startas.y < 0 || prm->startas.x + prm->startas.width > POOL_SIZE || prm->startas.y + prm->startas.height > POOL_SIZE){
+                prm->code = FUN_WRONGARGS;
+                return prm;
+            }
+            if(TCSS.editRectActive){
+                prm->code = FUN_ERROR;
+                return prm;
+            }
+        }, {})
+        IMPL_FUNCTION(startRect, {
+            RectangleInt startas = prm->startas;
+            TCSS.editRect = startas;
+            TCSS.editRectActive = true;
+
+
+        })
+    
+
+    DEFINE_FUNCTION(0x001C, finalizeChange, RectangleInt changed )
+        DEFINE_FUNCTION_WRAPPER(finalizeChange, {
+            if(prm->changed.x < 0 || prm->changed.y < 0 || prm->changed.x + prm->changed.width > POOL_SIZE || prm->changed.y + prm->changed.height > POOL_SIZE){
+                prm->code = FUN_WRONGARGS;
+                return prm;
+            }
+        }, {})
+        IMPL_FUNCTION(finalizeChange, {
+            RectangleInt changed = prm->changed;
+
+
+            //Copy the RGBA data ordered in POOLSIZExPOOLSIZE to the edit rect to be ready for upload
+            for(int yy = 0; yy < changed.height; yy++){
+                size_t rowStartLocal = LOCAL2D_TO_LOCAL1D(0, yy, changed.width);
+                size_t rowStartPool = POOL2D_TO_POOL1D(changed.x, changed.y + yy);
+                size_t rowStartRGBA = POOL1D_TO_COLOR1D(rowStartPool);
+                size_t rowLength = changed.width;
+
+                memcpy(TCSS.editRectRGBA + (rowStartLocal * 4), TCSS.rgbaData + rowStartRGBA, rowLength * 4);
+            }
+
+            //Here id upload to gpu, but not yet lol
+
+        })
+
+    DEFINE_FUNCTION(0x001B, endRect, )
+        DEFINE_FUNCTION_WRAPPER(endRect, {
+            if(!TCSS.editRectActive){
+                prm->code = FUN_ERROR;
+                return prm;
+            }
+        }, {})
+        IMPL_FUNCTION(endRect, {
+            TCSS.editRectActive = false;
+
+            CF(CentralPixelPool, CentralPixelPool_finalizeChange, .changed = TCSS.editRect );
+        })
+
+
+    DEFINE_FUNCTION(0x001D, notifyChanges, RectangleInt changed )
+        DEFINE_FUNCTION_WRAPPER(notifyChanges, {
+            if(prm->changed.x < 0 || prm->changed.y < 0 || prm->changed.x + prm->changed.width > POOL_SIZE || prm->changed.y + prm->changed.height > POOL_SIZE){
+                prm->code = FUN_WRONGARGS;
+                return prm;
+            }
+        }, {})
+        IMPL_FUNCTION(notifyChanges, {
+            RectangleInt changed = prm->changed;
+
+            if(TCSS.editRectActive)
+            {
+                // if we have an edit rect active, resize it so it fits around our changes.
+                TCSS.editRect.width = MAX(TCSS.editRect.width, changed.x + changed.width - TCSS.editRect.x);
+                TCSS.editRect.height = MAX(TCSS.editRect.height, changed.y + changed.height - TCSS.editRect.y);
+                TCSS.editRect.x = MIN(TCSS.editRect.x, changed.x);
+                TCSS.editRect.y = MIN(TCSS.editRect.y, changed.y);
+            }
+            else 
+            {
+                // if we dont, update immdeatly.
+                CF(CentralPixelPool, CentralPixelPool_finalizeChange, .changed = changed );
+            }
+        })
+
+    
 
     IMPL_INITTER({
         TraceLog(LOG_INFO, "Initializing CentralPixelPool");
@@ -133,206 +461,39 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         memset(TCSS.cells, 0, sizeof(Cell) * POOL_AREA);
 
         TCSS.rgbaData = malloc(sizeof(char) * POOL_AREA * 4);
-        if(TCSS.rgbaData == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for rgbaData"); prm->code = FUN_ERROR; free(TCSS.cells); return; }
+        if(TCSS.rgbaData == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for rgbaData"); prm->code = FUN_ERROR; return; }
         memset(TCSS.rgbaData, 0, sizeof(char) * POOL_AREA * 4);
 
         TCSS.editRectActive = false;
         
-        TCSS.editRect = (Rectangle){0, 0, 0, 0};
+        TCSS.editRect = (RectangleInt){0, 0, 0, 0};
 
-        TCSS.editRectRGBA = malloc(sizeof(char) * EDITRECT_AREA * 4);
-        if(TCSS.editRectRGBA == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for editRectRGBA"); prm->code = FUN_ERROR; free(TCSS.cells); free(TCSS.rgbaData); return; }
-        memset(TCSS.editRectRGBA, 0, sizeof(char) * EDITRECT_AREA * 4);
-
-        // Initialize quadtree allocator
-        // Worst case: all blocks are minimum size = (POOL_SIZE/MINBLOCKSIZE)^2 blocks
-        TCSS.blockPoolSize = (POOL_SIZE / MINBLOCKSIZE) * (POOL_SIZE / MINBLOCKSIZE);
-        TCSS.blockPool = malloc(sizeof(FreeBlock) * TCSS.blockPoolSize);
-        if(TCSS.blockPool == NULL) {
-            TraceLog(LOG_ERROR, "Failed to allocate block pool");
-            prm->code = FUN_ERROR;
-            free(TCSS.cells);
-            free(TCSS.rgbaData);
-            free(TCSS.editRectRGBA);
-            return;
-        }
-        TCSS.blockPoolUsed = 0;
+        TCSS.editRectRGBA = malloc(sizeof(char) * POOL_AREA * 4);
+        if(TCSS.editRectRGBA == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for editRectRGBA"); prm->code = FUN_ERROR; return; }
+        memset(TCSS.editRectRGBA, 0, sizeof(char) * POOL_AREA * 4);
 
         // Initialize free lists
         for(int i = 0; i <= MAXLEVEL; i++) {
-            TCSS.freeLists[i] = NULL;
+            int blockSize = MINBLOCKSIZE << i;
+            int blocksPerDim = POOL_SIZE / blockSize;
+            int blockCount = blocksPerDim * blocksPerDim;
+
+            TCSS.nodeStates[i] = malloc(sizeof(NodeState) * blockCount);
+            if (!TCSS.nodeStates[i]) { TraceLog(LOG_ERROR, "Failed to allocate memory for nodeStates at level %d", i); prm->code = FUN_ERROR; return; }
+            
+            for(int j = 0; j < blockCount; j++){
+                TCSS.nodeStates[i][j].state = NODESTATE_FREE;
+                TCSS.nodeStates[i][j].largest_freeblock = i;
+            }
+
         }
 
-        // Start with one free block at max level (entire pool)
-        TCSS.freeLists[MAXLEVEL] = &TCSS.blockPool[TCSS.blockPoolUsed++];
-        TCSS.freeLists[MAXLEVEL]->x = 0;
-        TCSS.freeLists[MAXLEVEL]->y = 0;
-        TCSS.freeLists[MAXLEVEL]->next = NULL;
+        TCSS.occupied = malloc(sizeof(bool) * POOL_AREA);
+        if(TCSS.occupied == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for occupied"); prm->code = FUN_ERROR; return; }
+        memset(TCSS.occupied, 0, sizeof(bool) * POOL_AREA);
 
         TraceLog(LOG_INFO, "Quadtree allocator initialized: MAXLEVEL=%d, MINBLOCKSIZE=%d", MAXLEVEL, MINBLOCKSIZE);
     })
-
-    
-
-    IMPLOTHER_FUNCTION(CentralPixelPool_rentHandle, {
-        int width = prm->width;
-        int height = prm->height;
-        int bigger = width > height ? width : height;
-        width = next_power_of_2(bigger);
-        height = next_power_of_2(bigger);
-        
-        if (width < MINBLOCKSIZE) width = MINBLOCKSIZE;
-        if (height < MINBLOCKSIZE) height = MINBLOCKSIZE;
-        CPP_Handle* out_handle = prm->out_handle;
-    
-        if (width <= 0 || height <= 0 || width > POOL_SIZE || height > POOL_SIZE) {
-            TraceLog(LOG_ERROR, "Invalid handle size requested: %dx%d", width, height);
-            out_handle->valid = false;
-            prm->code = FUN_ERROR;
-            return;
-        }
-
-        // Calculate required level (block size = MINBLOCKSIZE << level)
-        int size = (width > height) ? width : height;
-        if (size < MINBLOCKSIZE) size = MINBLOCKSIZE;
-        int level = LOG2_POW2(size) - MINBLOCKLOG;
-
-        if (level < 0 || level > MAXLEVEL) {
-            TraceLog(LOG_ERROR, "Invalid level %d for size %d", level, size);
-            out_handle->valid = false;
-            prm->code = FUN_ERROR;
-            return;
-        }
-
-        // Try to find a free block at this level
-        FreeBlock* block = TCSS.freeLists[level];
-        
-        // If no block at this level, split from higher levels
-        if (block == NULL) {
-            // Find the smallest available block that's larger
-            int splitLevel = -1;
-            for (int l = level + 1; l <= MAXLEVEL; l++) {
-                if (TCSS.freeLists[l] != NULL) {
-                    splitLevel = l;
-                    break;
-                }
-            }
-
-            if (splitLevel == -1) {
-                TraceLog(LOG_WARNING, "No space left in pool for size %d (level %d)", size, level);
-                out_handle->valid = false;
-                prm->code = FUN_ERROR;
-                return;
-            }
-
-            // Split blocks down to required level
-            for (int l = splitLevel; l > level; l--) {
-                // Take a block from level l
-                FreeBlock* largeBlock = TCSS.freeLists[l];
-                TCSS.freeLists[l] = largeBlock->next;
-
-                int blockSize = MINBLOCKSIZE << l;
-                int halfSize = blockSize / 2;
-                int bx = largeBlock->x;
-                int by = largeBlock->y;
-
-                // Split into 4 quadrants and add to level l-1
-                for (int q = 0; q < 4; q++) {
-                    if (TCSS.blockPoolUsed >= TCSS.blockPoolSize) {
-                        TraceLog(LOG_ERROR, "Block pool exhausted!");
-                        out_handle->valid = false;
-                        prm->code = FUN_ERROR;
-                        return;
-                    }
-
-                    FreeBlock* newBlock = &TCSS.blockPool[TCSS.blockPoolUsed++];
-                    newBlock->x = bx + ((q & 1) ? halfSize : 0);
-                    newBlock->y = by + ((q & 2) ? halfSize : 0);
-                    newBlock->next = TCSS.freeLists[l - 1];
-                    TCSS.freeLists[l - 1] = newBlock;
-                }
-            }
-
-            block = TCSS.freeLists[level];
-        }
-
-        // Allocate the block
-        if (block == NULL) {
-            TraceLog(LOG_ERROR, "Allocation failed after split!");
-            out_handle->valid = false;
-            prm->code = FUN_ERROR;
-            return;
-        }
-
-        TCSS.freeLists[level] = block->next;
-
-        int foundX = block->x;
-        int foundY = block->y;
-
-        // Mark region as occupied
-        for (int yy = 0; yy < height; yy++) {
-            for (int xx = 0; xx < width; xx++) {
-                int idx = POOL2D_TO_POOL1D(foundX + xx, foundY + yy);
-                TCSS.cells[idx].isOccupied = true;
-            }
-        }
-
-        out_handle->rectX = foundX;
-        out_handle->rectY = foundY;
-        out_handle->rectWidth = width;
-        out_handle->rectHeight = height;
-        out_handle->valid = true;
-
-        TraceLog(LOG_INFO, "Rented handle at (%d, %d) size %dx%d (level %d)", foundX, foundY, width, height, level);
-        prm->code = FUN_OK;
-    })    
-
-    IMPLOTHER_FUNCTION(CentralPixelPool_evictHandle, {
-        CPP_Handle* handle = prm->handle;
-        if (handle == NULL || !handle->valid) {
-            TraceLog(LOG_WARNING, "Tried to evict invalid handle");
-            prm->code = FUN_ERROR;
-            return;
-        }
-    
-        int x = handle->rectX;
-        int y = handle->rectY;
-        int w = handle->rectWidth;
-        int h = handle->rectHeight;
-
-        // Calculate level
-        int size = (w > h) ? w : h;
-        int level = LOG2_POW2(size) - MINBLOCKLOG;
-
-        // Free region
-        for (int yy = 0; yy < h; yy++) {
-            for (int xx = 0; xx < w; xx++) {
-                int idx = POOL2D_TO_POOL1D(x + xx, y + yy);
-                TCSS.cells[idx].isOccupied = false;
-            }
-        }
-
-        // Return block to free list
-        if (TCSS.blockPoolUsed >= TCSS.blockPoolSize) {
-            TraceLog(LOG_ERROR, "Block pool exhausted during eviction!");
-            handle->valid = false;
-            prm->code = FUN_ERROR;
-            return;
-        }
-
-        FreeBlock* freedBlock = &TCSS.blockPool[TCSS.blockPoolUsed++];
-        freedBlock->x = x;
-        freedBlock->y = y;
-        freedBlock->next = TCSS.freeLists[level];
-        TCSS.freeLists[level] = freedBlock;
-
-        handle->valid = false;
-    
-        TraceLog(LOG_INFO, "Evicted handle at (%d, %d) size %dx%d (level %d)", x, y, w, h, level);
-        prm->code = FUN_OK;
-    })
-    
-
 
     BEGIN_FUNFIND()
 

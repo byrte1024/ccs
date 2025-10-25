@@ -28,61 +28,7 @@ int main(void) {
     assert(C_TestType_REGISTER());
     assert(C_CentralPixelPool_REGISTER());
 
-    CPP_Handle handle = { 0 };
 
-    SetRandomSeed(23);
-
-    CF(CentralPixelPool, CentralPixelPool_rentHandle, .width =32, .height = 32, .out_handle = &handle);
-    CF(CentralPixelPool, CentralPixelPool_rentHandle, .width =4, .height = 4, .out_handle = &handle);
-    CF(CentralPixelPool, CentralPixelPool_rentHandle, .width =16, .height = 16, .out_handle = &handle);
-    CF(CentralPixelPool, CentralPixelPool_rentHandle, .width =2, .height = 2, .out_handle = &handle);
-
-    for(int y = 0; y < POOL_SIZE; y++) {
-        for(int x = 0; x < POOL_SIZE; x++) {
-            Cell cell = CSS(CentralPixelPool).cells[POOL2D_TO_POOL1D(x,y)];
-            if(cell.isOccupied){
-                printf("X");
-            }
-            else{
-                printf("-");
-            }
-        }
-        printf("\n");
-    }
-
-    CF(CentralPixelPool, CentralPixelPool_evictHandle, .handle = &handle);
-
-    
-    for(int y = 0; y < POOL_SIZE; y++) {
-        for(int x = 0; x < POOL_SIZE; x++) {
-            Cell cell = CSS(CentralPixelPool).cells[POOL2D_TO_POOL1D(x,y)];
-            if(cell.isOccupied){
-                printf("X");
-            }
-            else{
-                printf("-");
-            }
-        }
-        printf("\n");
-    }
-
-    
-    CF(CentralPixelPool, CentralPixelPool_rentHandle, .width =2, .height = 2, .out_handle = &handle);
-
-    
-    
-    for(int y = 0; y < POOL_SIZE; y++) {
-        for(int x = 0; x < POOL_SIZE; x++) {
-            Cell cell = CSS(CentralPixelPool).cells[POOL2D_TO_POOL1D(x,y)];
-            if(cell.isOccupied){
-                printf("X");
-            }
-            else{
-                printf("-");
-            }
-        }
-        printf("\n");
-    }
     
     getchar();
 

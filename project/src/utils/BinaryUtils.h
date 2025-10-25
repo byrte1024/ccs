@@ -5,6 +5,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+
+
 
 // Check if a number is a power of 2 (non-zero)
 #define IS_POWER_OF_2(x) (((x) != 0) && (((x) & ((x) - 1)) == 0))
