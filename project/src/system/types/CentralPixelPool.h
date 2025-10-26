@@ -13,7 +13,7 @@
   
 
 #define LOG2_POW2(n) (__builtin_ctz(n))
-#define INTERNAL_POOL_SIZE (128)
+#define INTERNAL_POOL_SIZE (4096)
 //the size before an edit rect just uses the main pool buffer
 #define POOL_AREA (INTERNAL_POOL_SIZE * INTERNAL_POOL_SIZE)
 enum { POOL_SIZE = INTERNAL_POOL_SIZE };
@@ -113,6 +113,8 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         bool editRectActive;
         RectangleInt editRect;
         char* editRectRGBA;
+
+        Texture2D gpuTex;
 
         NodeState* nodeStates[MAXLEVEL + 1];
 
@@ -383,6 +385,7 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
             TCSS.editRect = startas;
             TCSS.editRectActive = true;
 
+            TraceLog(LOG_INFO , "startRect: %d, %d, %d, %d", startas.x, startas.y, startas.width, startas.height);
 
         })
     
@@ -397,6 +400,7 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         IMPL_FUNCTION(finalizeChange, {
             RectangleInt changed = prm->changed;
 
+            TraceLog(LOG_INFO , "finalizeChange: %d, %d, %d, %d", changed.x, changed.y, changed.width, changed.height);
 
             //Copy the RGBA data ordered in POOLSIZExPOOLSIZE to the edit rect to be ready for upload
             for(int yy = 0; yy < changed.height; yy++){
@@ -408,7 +412,8 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
                 memcpy(TCSS.editRectRGBA + (rowStartLocal * 4), TCSS.rgbaData + rowStartRGBA, rowLength * 4);
             }
 
-            //Here id upload to gpu, but not yet lol
+
+            rlUpdateTexture(TCSS.gpuTex.id, changed.x, changed.y, changed.width, changed.height, RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 , TCSS.editRectRGBA);
 
         })
 
@@ -421,6 +426,8 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         }, {})
         IMPL_FUNCTION(endRect, {
             TCSS.editRectActive = false;
+
+            TraceLog(LOG_INFO , "endRect: %d, %d, %d, %d", TCSS.editRect.x, TCSS.editRect.y, TCSS.editRect.width, TCSS.editRect.height);
 
             CF(CentralPixelPool, CentralPixelPool_finalizeChange, .changed = TCSS.editRect );
         })
@@ -492,6 +499,20 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         if(TCSS.occupied == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for occupied"); prm->code = FUN_ERROR; return; }
         memset(TCSS.occupied, 0, sizeof(bool) * POOL_AREA);
 
+        //Initialize texture
+
+        
+
+        Image tempImage = GenImageColor(POOL_SIZE, POOL_SIZE, (Color){0,0,0,0});
+
+        ImageFormat(&tempImage, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+
+        TCSS.gpuTex = LoadTextureFromImage(tempImage);
+
+        SetTextureFilter(TCSS.gpuTex, TEXTURE_FILTER_POINT);
+        SetTextureWrap(TCSS.gpuTex, TEXTURE_WRAP_CLAMP);
+
+
         TraceLog(LOG_INFO, "Quadtree allocator initialized: MAXLEVEL=%d, MINBLOCKSIZE=%d", MAXLEVEL, MINBLOCKSIZE);
     })
 
@@ -501,6 +522,10 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
 
         FUNFIND_IMPL(rentHandle);
         FUNFIND_IMPL(evictHandle);
+        FUNFIND_IMPL(startRect);
+        FUNFIND_IMPL(finalizeChange);
+        FUNFIND_IMPL(endRect);
+        FUNFIND_IMPL(notifyChanges);
 
     END_FUNFIND()
 

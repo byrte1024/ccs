@@ -1,4 +1,4 @@
-#if INTESTING
+#ifdef INTESTING
 
 #include <raylib.h>
 #include <stdio.h>
@@ -282,13 +282,13 @@ int test_out_of_memory(void) {
     TEST_START("Out of Memory Handling");
 
     
-    CPP_Handle handles[POOL_AREA / 8] = {0};
+    CPP_Handle handles[POOL_AREA / 256] = {0};
     int allocated_count = 0;
     
     // Try to allocate until we run out
-    for (int i = 0; i < (POOL_AREA / 8); i++) {
+    for (int i = 0; i < (POOL_AREA / 256); i++) {
         CF(CentralPixelPool, CentralPixelPool_rentHandle, 
-           .width = 8, .height = 8, .out_handle = &handles[i]);
+           .width = 256, .height = 256, .out_handle = &handles[i]);
         
         if (handles[i].valid) {
             allocated_count++;
@@ -299,7 +299,7 @@ int test_out_of_memory(void) {
     
     printf("Allocated %d blocks before running out\n", allocated_count);
     TEST_ASSERT(allocated_count > 0, "Some allocations succeeded");
-    TEST_ASSERT(allocated_count < POOL_AREA / 8, "Eventually ran out of space");
+    TEST_ASSERT(allocated_count < (POOL_AREA / 256), "Eventually ran out of space");
     
     // Clean up
     for (int i = 0; i < allocated_count; i++) {
@@ -382,6 +382,8 @@ int main(void) {
     // Set up custom trace logging
     SetTraceLogCallback(TestTraceLog);
     SetTraceLogLevel(TEST_LOG_LEVEL);
+
+    InitWindow(1,1,"Test");
     
     printf("Starting comprehensive CentralPixelPool test suite...\n");
     
@@ -410,6 +412,8 @@ int main(void) {
     } else {
         printf("SOME TESTS FAILED!\n");
     }
+
+    CloseWindow();
     
     return failures;
 }
