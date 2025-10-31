@@ -382,6 +382,8 @@ int main(void) {
     SetTraceLogCallback(TestTraceLog);
     SetTraceLogLevel(TEST_LOG_LEVEL);
 
+    SetConfigFlags(FLAG_WINDOW_HIDDEN);
+
     InitWindow(1,1,"Test");
     
     printf("Starting comprehensive CentralPixelPool test suite...\n");
