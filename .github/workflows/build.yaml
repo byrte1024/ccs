@@ -25,6 +25,13 @@ jobs:
             mingw-w64-x86_64-binutils
           cache: true
 
+      - name: Install raygui header
+        shell: bash
+        run: |
+          mkdir -p /c/msys64/mingw64/include
+          curl -L https://raw.githubusercontent.com/raysan5/raygui/refs/heads/master/src/raygui.h -o /c/msys64/mingw64/include/raygui.h
+          echo "raygui.h installed to C:\\msys64\\mingw64\\include"
+
       - name: Build Debug
         shell: msys2 {0}
         run: ./compile.bat debug false
