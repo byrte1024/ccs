@@ -429,8 +429,11 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
                 memcpy(TCSS.editRectRGBA + (rowStartLocal * 4), TCSS.rgbaData + rowStartRGBA, rowLength * 4);
             }
 
+        #ifndef NOVISUAL
 
             rlUpdateTexture(TCSS.gpuTex.id, changed.x, changed.y, changed.width, changed.height, RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 , TCSS.editRectRGBA);
+            
+        #endif
 
         }
 
@@ -451,7 +454,7 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         }
 
 
-    DEFINE_FUNCTION(0x001D, notifyChanges, RectangleInt changed )
+    DEFINE_FUNCTION(0x001D, notifyChanges, RectangleInt changed; )
         DEFINE_FUNCTION_WRAPPER(notifyChanges, {
             if(prm->changed.x < 0 || prm->changed.y < 0 || prm->changed.x + prm->changed.width > POOL_SIZE || prm->changed.y + prm->changed.height > POOL_SIZE){
                 prm->code = FUN_WRONGARGS;
@@ -519,10 +522,9 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         if(TCSS.occupied == NULL) {  LogError( "Failed to allocate memory for occupied"); prm->code = FUN_ERROR; return; }
         memset(TCSS.occupied, 0, sizeof(bool) * POOL_AREA);
 
+    #ifndef NOVISUAL
+
         //Initialize texture
-
-        
-
         Image tempImage = GenImageColor(POOL_SIZE, POOL_SIZE, (Color){0,0,0,0});
 
         ImageFormat(&tempImage, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
@@ -531,6 +533,8 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
 
         SetTextureFilter(TCSS.gpuTex, TEXTURE_FILTER_POINT);
         SetTextureWrap(TCSS.gpuTex, TEXTURE_WRAP_CLAMP);
+
+    #endif
 
 
         FLogInfo("Quadtree allocator initialized: MAXLEVEL=%d, MINBLOCKSIZE=%d", MAXLEVEL, MINBLOCKSIZE);

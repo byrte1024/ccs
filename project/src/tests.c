@@ -1,5 +1,7 @@
 #ifdef INTESTING
 
+#define NOVISUAL
+
 #include <raylib.h>
 #include <stdio.h>
 #include <string.h>
@@ -381,10 +383,6 @@ int main(void) {
     // Set up custom trace logging
     SetTraceLogCallback(TestTraceLog);
     SetTraceLogLevel(TEST_LOG_LEVEL);
-
-    SetConfigFlags(FLAG_WINDOW_HIDDEN);
-
-    InitWindow(1,1,"Test");
     
     printf("Starting comprehensive CentralPixelPool test suite...\n");
     
@@ -414,7 +412,6 @@ int main(void) {
         printf("SOME TESTS FAILED!\n");
     }
 
-    CloseWindow();
     
     return failures;
 }
