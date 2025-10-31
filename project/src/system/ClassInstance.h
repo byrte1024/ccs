@@ -111,8 +111,8 @@ static inline bool Class_Reference_Status_IsEmpty(const ClassReference _referenc
 DEFINE_I_FUNCTION(0x0001,   CREATE       , );
 DEFINE_I_FUNCTION(0x0002,   DESTROY      , );
 DEFINE_I_FUNCTION(0x0003,   TOSTRING     , MemoryStream* stream; );
-DEFINE_I_FUNCTION(0x0003,   SERIALIZE    , MemoryStream* stream; );
-DEFINE_I_FUNCTION(0x0004,   DESERIALIZE  , MemoryStream* stream; );
+DEFINE_I_FUNCTION(0x0004,   SERIALIZE    , MemoryStream* stream; );
+DEFINE_I_FUNCTION(0x0005,   DESERIALIZE  , MemoryStream* stream; );
 
 
 DEFINE_I_FUNCTION_WRAPPER(  CREATE       , {
@@ -181,9 +181,10 @@ DEFINE_I_FUNCTION_WRAPPER(  TOSTRING      ,
     MemoryStream_WriteCstr(prm->stream, CSTRCOM(" } )"),NULL);
     
 });
+
 DEFINE_I_FUNCTION_WRAPPER(  SERIALIZE     ,
     
-    #define SYNTAX_ERROR(a) if(EP1(a)){ prm->code = FUN_ERROR; MemoryStream_Seek_Set(prm->stream, cursnap_start); return prm; }
+    #define SYNTAX_ERROR(a) if(EP1(!a)){ prm->code = FUN_ERROR; MemoryStream_Seek_Set(prm->stream, cursnap_start); return prm; }
 
     if(!prm->stream){
         prm->code = FUN_WRONGARGS;
@@ -198,25 +199,40 @@ DEFINE_I_FUNCTION_WRAPPER(  SERIALIZE     ,
     SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_END_SIZE, NULL));
 
     SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_BEGIN_TYPE, NULL));
+    if(cid == CID_DEF){
+        SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_NULL, NULL));
+    }
+    else{
+        SYNTAX_ERROR(MemoryStream_WriteBytes(prm->stream, (uint8_t*)&cid, sizeof(cid), NULL));
+    }
     
-
-
+    SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_END_TYPE, NULL));
+    
+    SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_BEGIN_DATA, NULL))
     size_t cursnap_data_start = prm->stream->cursor;
 ,{
-
     if(prm->code != FUN_OK){
         SYNTAX_ERROR(MemoryStream_Seek_Set(prm->stream, cursnap_data_start));
-
-
+        SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_NULL, NULL));
+        FLogError("Error while serializing instance of type: %s", Class_System_GetDefinitionName(cid));
         return prm;
     }
+    SYNTAX_ERROR(MemoryStream_WriteChar(prm->stream, TOKEN_END_DATA, NULL));
 
+    size_t cursnap_end = prm->stream->cursor;
+    size_t size = cursnap_end - cursnap_start;
+
+    //move to the size field
+    SYNTAX_ERROR(MemoryStream_Seek_Set(prm->stream, cursnap_size));
+    SYNTAX_ERROR(MemoryStream_WriteBytes(prm->stream, (uint8_t*)&size, sizeof(size_t), NULL));
+
+    MemoryStream_Seek_Set(prm->stream, cursnap_end);
 });
 
 static ClassInstance* Class_Instance_AllocateEmpty() {
     ClassInstance* instance = malloc(sizeof(ClassInstance));
     if(instance == NULL){
-        TraceLog(LOG_ERROR, "Error while allocating instance.");
+        LogError( "Error while allocating instance.");
         return NULL;
     }
     memset(instance, 0, sizeof(ClassInstance));
@@ -231,18 +247,18 @@ static void Class_Instance_FreeEmpty(ClassInstance* instance) {
         free(instance);
     }
     else{
-        TraceLog(LOG_ERROR, "Instance is not empty.");
+        LogError( "Instance is not empty.");
     }
 }
 
 
 static void Class_Instance_PrintStatus(ClassInstance* instance) {
-    TraceLog(LOG_INFO, TextFormat("Instance: %p, Data: %p, CID: %d, RefCount: %d",
+    FLogInfo("Instance: %p, Data: %p, CID: %d, RefCount: %d",
         instance,
         instance == NULL ? NULL : instance->data,
         instance == NULL ? CID_DEF : instance->cid,
-        instance == NULL ? (long long int)-1 : (long long int)instance->ref_count)
-        );
+        instance == NULL ? (long long int)-1 : (long long int)instance->ref_count);
+        
 }
 
 
@@ -280,7 +296,7 @@ static void INTERNAL_Class_Reference_Forget(ClassReference* reference){
                     
                     if(CALL_I_FUNCTION(reference->instance, DEF_DESTROY, )->code != FUN_OK) {
 
-                        TraceLog(LOG_ERROR, "Error while destroying instance.");
+                        LogError( "Error while destroying instance.");
                         
                     }
                 }

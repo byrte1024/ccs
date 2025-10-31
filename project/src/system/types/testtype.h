@@ -1,4 +1,6 @@
+#define INSPECTION_IMMUNITY
 //testtype.h
+/*
 
 #pragma once
 
@@ -65,3 +67,5 @@ BEGIN_CLASS(0x001b,"TestType");
 
 END_CLASS()
 
+*/
+#undef INSPECTION_IMMUNITY

@@ -1,3 +1,5 @@
+#define INSPECTION_IMMUNITY
+
 //instance_macro.h
 
 #pragma once
@@ -51,7 +53,7 @@
         vals \
             \
     } EP2(S_I_,TYPE); \
-    DEFINE_I_FUNCTION(LFID_GETSTRUCT,GetStruct, EP2(S_I_,TYPE)* EP1(TYPE); ) \
+    DEFINE_I_FUNCTION(LFID_GETSTRUCT,GetStruct, EP2(S_I_,TYPE)* EP2(TYPE,_out); ) \
     DEFINE_I_FUNCTION_WRAPPER(GetStruct, \
         if(!Class_Instance_Status_IsAlive(prm->self) || !Class_Instance_Status_IsTyped(prm->self)) \
         { \
@@ -61,70 +63,70 @@
         ,       \
                 \
     ) \
-    IMPL_FUNCTION(GetStruct, { \
-        prm->EP1(TYPE) = prm->self->data;\
-    })
+    IMPL_FUNCTION(GetStruct) { \
+        prm->EP2(TYPE,_out) = prm->self->data;\
+    }
 
-#define DEFINE_I_STRUCT_NOWRAP
+#define ITYPEOF(type) EP2(S_I_,type)
 
-#define PRIMITIVE_VARIABLE(type, name) \
-    type name;
+#define PRIMITIVE_VARIABLE(type, name) type name
 
-#define P_VAR(type, name) \
-    PRIMITIVE_VARIABLE(type, name)
+#define P_VAR(type, name) PRIMITIVE_VARIABLE(type, name)
 
-#define IMPL_CONSTRUCTOR(...) \
-    IMPLOTHER_FUNCTION(DEF_CREATE, \
-    { \
-        ClassInstance* i = prm->self; \
-        EP2(S_I_,TYPE)* t = malloc(sizeof(EP2(S_I_,TYPE))); \
-        if(t == NULL){ \
-            prm->code = FUN_ERROR; \
-            return; \
-        } \
-        memset(t,0,sizeof(EP2(S_I_,TYPE))); \
-        EP1(__VA_ARGS__)\
-        \
-        i->data = t; \
-    } \
-    )
+#define PVAR(type, name) P_VAR(type, name)
 
 #define C_GET_PRIMITIVE(var) \
-    t->var
+    self->var
 
 #define F_GETPVAR(var) \
     C_GET_PRIMITIVE(var)
 
-#define IMPL_DESTRUCTOR(...) \
-    IMPLOTHER_FUNCTION(DEF_DESTROY, \
-        { \
-        ClassInstance* i = prm->self; \
-        EP2(S_I_,TYPE)* t = i->data; \
-        EP1(__VA_ARGS__) \
-        free(t);\
-    })
 
-#define IMPL_TOSTRING(...) \
-    IMPLOTHER_FUNCTION(DEF_TOSTRING, \
-        { \
-        ClassInstance* i = prm->self; \
-        EP2(S_I_,TYPE)* t = i->data; \
-        MemoryStream* stream = prm->stream; \
-        EP1(__VA_ARGS__)\
-    })
+#undef INSPECTION_IMMUNITY
 
-#define FUNFIND_CONSTRUCTOR() \
-    FUNFIND_IMPLOTHER(DEF_CREATE);
+#define CLASS_I_STRUCT(type) EP2(S_I_,type)
 
-#define FUNFIND_DESTRUCTOR() \
-    FUNFIND_IMPLOTHER(DEF_DESTROY);
+#define CLIS(type) EP2(S_I_,type)
 
-#define FUNFIND_TOSTRING() \
-    FUNFIND_IMPLOTHER(DEF_TOSTRING);
+#define GETISELF() CLIS(TYPE)* self = CALL_I_FUNCTION(prm->self, EP2(TYPE,_GetStruct) , )->EP2(TYPE,_out)
+#define GETISTRUCT(Instance, type, outvar) CLIS(type)* outvar = CALL_I_FUNCTION(Instance, EP2(type,_GetStruct) , )->EP2(type,_out)
 
-#define FUNFIND_SERIALIZE() \
-    FUNFIND_IMPLOTHER(DEF_SERIALIZE);
+#define IMPL_HEADER_CREATE \
+    IMPL_HEADER \
+    prm->self->data = malloc(sizeof(CLASS_I_STRUCT(TYPE))); \
+    if(prm->self->data == NULL) { \
+        FLogError("Failed to allocated memory for instance of type %s", Class_System_GetDefinitionName(prm->self->cid)); \
+        prm->code = FUN_ERROR; \
+        return; \
+    }
 
-#define FUNFIND_DESERIALIZE() \
-    FUNFIND_IMPLOTHER(DEF_DESERIALIZE);
+#define SERIALIZE_ASSERT(run) \
+    if(!(run)) { \
+        FLogError("Serialization failed: %s", #run); \
+        prm->code = FUN_ERROR; \
+        return; \
+    }
 
+#define DESERIALIZE_ASSERT(run) \
+    if(!(run)) { \
+        FLogError("Deserialization failed: %s", #run); \
+        prm->code = FUN_ERROR; \
+        return; \
+    }
+
+#define SERIALIZE_SIMPLEVAR(ms, var) \
+    SERIALIZE_ASSERT(MemoryStream_WriteChar(ms, TOKEN_BEGIN_VARIABLE, NULL)); \
+    SERIALIZE_ASSERT(MemoryStream_WriteBytes(ms,(uint8_t*)&var, sizeof(var), NULL)); \
+    SERIALIZE_ASSERT(MemoryStream_WriteChar(ms, TOKEN_END_VARIABLE, NULL));
+
+#define SERIALIZE_OWN_SIMPLEVAR(ms, varname) SERIALIZE_SIMPLEVAR(ms, F_GETPVAR(varname))
+
+#define DESERIALIZE_SIMPLEVAR(ms, dst, buffer) \
+    DESERIALIZE_ASSERT(MemoryStream_ReadChar(ms, &buffer, NULL) || buffer != TOKEN_BEGIN_VARIABLE); \
+    DESERIALIZE_ASSERT(MemoryStream_ReadBytes(ms, (uint8_t*)&dst, NULL, sizeof(dst))); \
+    DESERIALIZE_ASSERT(MemoryStream_ReadChar(ms, &buffer, NULL) || buffer != TOKEN_END_VARIABLE);
+
+#define DESERIALIZE_OWN_SIMPLEVAR(ms, varname, buffer) DESERIALIZE_SIMPLEVAR(ms, F_GETPVAR(varname), buffer)
+
+#define CIF(classinstance, name, ...) CALL_I_FUNCTION(classinstance, name, __VA_ARGS__)
+#define CRF(classreference, name, ...) CALL_R_FUNCTION(classreference, name, __VA_ARGS__)

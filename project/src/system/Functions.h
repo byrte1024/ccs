@@ -19,6 +19,8 @@ typedef struct FunCallStack {
     FunCallStack* up;
     size_t depth;    
 
+    char* name;
+
     FunCall* current;
 
 

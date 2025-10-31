@@ -100,7 +100,6 @@ void print_pool_state(const char* label) {
 int test_initialization(void) {
     TEST_START("Initialization");
     
-    TEST_ASSERT(C_TestType_REGISTER(), "TestType registration");
     TEST_ASSERT(C_CentralPixelPool_REGISTER(), "CentralPixelPool registration");
     
     // Verify pool is empty

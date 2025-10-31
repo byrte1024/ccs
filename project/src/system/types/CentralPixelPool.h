@@ -42,6 +42,21 @@ _Static_assert((1 << POOL_SHIFT) == POOL_SIZE, "POOL_SHIFT and POOL_SIZE mismatc
 #define LOCALY_TO_POOLY(localY, rectY) (localY + rectY)
 #define LOCAL2D_TO_POOL1D(localX, localY, rectX, rectY) (POOL2D_TO_POOL1D(localX + rectX, localY + rectY))
 
+#define SET_POOL1D_COLOR(poolIndex, RR, GG, BB, AA) \
+    CSS(CentralPixelPool).cells[poolIndex].r = (char)(RR); \
+    CSS(CentralPixelPool).cells[poolIndex].g = (char)(GG); \
+    CSS(CentralPixelPool).cells[poolIndex].b = (char)(BB); \
+    CSS(CentralPixelPool).cells[poolIndex].a = (char)(AA); \
+    CSS(CentralPixelPool).rgbaData[(POOL1D_TO_COLOR1D_R(poolIndex))] = (char)(RR); \
+    CSS(CentralPixelPool).rgbaData[(POOL1D_TO_COLOR1D_G(poolIndex))] = (char)(GG); \
+    CSS(CentralPixelPool).rgbaData[(POOL1D_TO_COLOR1D_B(poolIndex))] = (char)(BB); \
+    CSS(CentralPixelPool).rgbaData[(POOL1D_TO_COLOR1D_A(poolIndex))] = (char)(AA); 
+
+#define SET_POOL2D_COLOR(poolX, poolY, r, g, b, a) SET_POOL1D_COLOR(POOL2D_TO_POOL1D(poolX, poolY), r, g, b, a)
+
+#define SET_LOCAL2D_COLOR(localX, localY, rectX, rectY, r, g, b, a) SET_POOL2D_COLOR(LOCALX_TO_POOLX(localX, rectX), LOCALY_TO_POOLY(localY, rectY), r, g, b, a)
+#define SET_LOCAL1D_COLOR(localIndex, rectX, rectY, rectWidth, rectHeight, r, g, b, a) SET_LOCAL2D_COLOR(LOCAL1D_TO_LOCALX(localIndex, rectWidth), LOCAL1D_TO_LOCALY(localIndex, rectWidth), rectX, rectY, r, g, b, a)
+
 #undef TYPE
 #define TYPE CentralPixelPool
 
@@ -120,7 +135,7 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
 
     );
 
-    DEFINE_FUNCTION(0x0010, rentHandle, int width; int height; CPP_Handle* out_handle)
+    DEFINE_FUNCTION(0x0010, rentHandle, int width; int height; CPP_Handle* out_handle; )
         DEFINE_FUNCTION_WRAPPER(rentHandle, {
             if(prm->width <= 0 || prm->height <= 0 || prm->width > POOL_SIZE || prm->height > POOL_SIZE || prm->out_handle == NULL){
                 prm->code = FUN_WRONGARGS;
@@ -132,7 +147,8 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
                 return prm;
             }
         })
-        IMPL_FUNCTION(rentHandle, {
+        IMPL_FUNCTION(rentHandle){
+            IMPL_HEADER;
             int width = prm->width;
             int height = prm->height;
             int bigger = width > height ? width : height;
@@ -275,11 +291,9 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         
             prm->code = FUN_OK;
             return;
-        })
-        
-        
+        }
 
-    DEFINE_FUNCTION(0x0011, evictHandle, CPP_Handle* handle )
+    DEFINE_FUNCTION(0x0011, evictHandle, CPP_Handle* handle; )
         DEFINE_FUNCTION_WRAPPER(evictHandle, {
             if(prm->handle == NULL || !prm->handle->valid){
                 prm->code = FUN_WRONGARGS;
@@ -291,7 +305,8 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
                 return prm;
             }
         })    
-        IMPL_FUNCTION(evictHandle, {
+        IMPL_FUNCTION(evictHandle) {
+            IMPL_HEADER;
             CPP_Handle* handle = prm->handle;
         
             int x = handle->rectX;
@@ -367,9 +382,9 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
             handle->valid = false;
         
             prm->code = FUN_OK;
-        })
+        }
 
-    DEFINE_FUNCTION(0x001A, startRect, RectangleInt startas )
+    DEFINE_FUNCTION(0x001A, startRect, RectangleInt startas; )
         DEFINE_FUNCTION_WRAPPER(startRect, {
             if(prm->startas.x < 0 || prm->startas.y < 0 || prm->startas.x + prm->startas.width > POOL_SIZE || prm->startas.y + prm->startas.height > POOL_SIZE){
                 prm->code = FUN_WRONGARGS;
@@ -380,27 +395,29 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
                 return prm;
             }
         }, {})
-        IMPL_FUNCTION(startRect, {
+        IMPL_FUNCTION(startRect) {
+            IMPL_HEADER;
             RectangleInt startas = prm->startas;
             TCSS.editRect = startas;
             TCSS.editRectActive = true;
 
-            TraceLog(LOG_INFO , "startRect: %d, %d, %d, %d", startas.x, startas.y, startas.width, startas.height);
+            FLogInfo("startRect: %d, %d, %d, %d", startas.x, startas.y, startas.width, startas.height);
 
-        })
+        }
     
 
-    DEFINE_FUNCTION(0x001C, finalizeChange, RectangleInt changed )
+    DEFINE_FUNCTION(0x001C, finalizeChange, RectangleInt changed; )
         DEFINE_FUNCTION_WRAPPER(finalizeChange, {
             if(prm->changed.x < 0 || prm->changed.y < 0 || prm->changed.x + prm->changed.width > POOL_SIZE || prm->changed.y + prm->changed.height > POOL_SIZE){
                 prm->code = FUN_WRONGARGS;
                 return prm;
             }
         }, {})
-        IMPL_FUNCTION(finalizeChange, {
+        IMPL_FUNCTION(finalizeChange) {
+            IMPL_HEADER
             RectangleInt changed = prm->changed;
 
-            TraceLog(LOG_INFO , "finalizeChange: %d, %d, %d, %d", changed.x, changed.y, changed.width, changed.height);
+            FLogInfo( "finalizeChange: %d, %d, %d, %d", changed.x, changed.y, changed.width, changed.height);
 
             //Copy the RGBA data ordered in POOLSIZExPOOLSIZE to the edit rect to be ready for upload
             for(int yy = 0; yy < changed.height; yy++){
@@ -415,7 +432,7 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
 
             rlUpdateTexture(TCSS.gpuTex.id, changed.x, changed.y, changed.width, changed.height, RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 , TCSS.editRectRGBA);
 
-        })
+        }
 
     DEFINE_FUNCTION(0x001B, endRect, )
         DEFINE_FUNCTION_WRAPPER(endRect, {
@@ -424,13 +441,14 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
                 return prm;
             }
         }, {})
-        IMPL_FUNCTION(endRect, {
+        IMPL_FUNCTION(endRect) {
+            IMPL_HEADER
             TCSS.editRectActive = false;
 
-            TraceLog(LOG_INFO , "endRect: %d, %d, %d, %d", TCSS.editRect.x, TCSS.editRect.y, TCSS.editRect.width, TCSS.editRect.height);
+            FLogInfo( "endRect: %d, %d, %d, %d", TCSS.editRect.x, TCSS.editRect.y, TCSS.editRect.width, TCSS.editRect.height);
 
             CF(CentralPixelPool, CentralPixelPool_finalizeChange, .changed = TCSS.editRect );
-        })
+        }
 
 
     DEFINE_FUNCTION(0x001D, notifyChanges, RectangleInt changed )
@@ -440,7 +458,8 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
                 return prm;
             }
         }, {})
-        IMPL_FUNCTION(notifyChanges, {
+        IMPL_FUNCTION(notifyChanges) {
+            IMPL_HEADER
             RectangleInt changed = prm->changed;
 
             if(TCSS.editRectActive)
@@ -456,19 +475,20 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
                 // if we dont, update immdeatly.
                 CF(CentralPixelPool, CentralPixelPool_finalizeChange, .changed = changed );
             }
-        })
+        }
 
     
 
-    IMPL_INITTER({
-        TraceLog(LOG_INFO, "Initializing CentralPixelPool");
+    IMPLOTHER_FUNCTION(DEF_INITIALIZE){
+        IMPL_HEADER
+        LogInfo( "Initializing CentralPixelPool");
 
         TCSS.cells = malloc(sizeof(Cell) * POOL_AREA);
-        if(TCSS.cells == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for cells"); prm->code = FUN_ERROR; return; }
+        if(TCSS.cells == NULL) {  LogError("Failed to allocate memory for cells"); prm->code = FUN_ERROR; return; }
         memset(TCSS.cells, 0, sizeof(Cell) * POOL_AREA);
 
         TCSS.rgbaData = malloc(sizeof(char) * POOL_AREA * 4);
-        if(TCSS.rgbaData == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for rgbaData"); prm->code = FUN_ERROR; return; }
+        if(TCSS.rgbaData == NULL) {  LogError( "Failed to allocate memory for rgbaData"); prm->code = FUN_ERROR; return; }
         memset(TCSS.rgbaData, 0, sizeof(char) * POOL_AREA * 4);
 
         TCSS.editRectActive = false;
@@ -476,7 +496,7 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         TCSS.editRect = (RectangleInt){0, 0, 0, 0};
 
         TCSS.editRectRGBA = malloc(sizeof(char) * POOL_AREA * 4);
-        if(TCSS.editRectRGBA == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for editRectRGBA"); prm->code = FUN_ERROR; return; }
+        if(TCSS.editRectRGBA == NULL) {  LogError( "Failed to allocate memory for editRectRGBA"); prm->code = FUN_ERROR; return; }
         memset(TCSS.editRectRGBA, 0, sizeof(char) * POOL_AREA * 4);
 
         // Initialize free lists
@@ -486,7 +506,7 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
             int blockCount = blocksPerDim * blocksPerDim;
 
             TCSS.nodeStates[i] = malloc(sizeof(NodeState) * blockCount);
-            if (!TCSS.nodeStates[i]) { TraceLog(LOG_ERROR, "Failed to allocate memory for nodeStates at level %d", i); prm->code = FUN_ERROR; return; }
+            if (!TCSS.nodeStates[i]) { FLogError( "Failed to allocate memory for nodeStates at level %d", i); prm->code = FUN_ERROR; return; }
             
             for(int j = 0; j < blockCount; j++){
                 TCSS.nodeStates[i][j].state = NODESTATE_FREE;
@@ -496,7 +516,7 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         }
 
         TCSS.occupied = malloc(sizeof(bool) * POOL_AREA);
-        if(TCSS.occupied == NULL) {  TraceLog(LOG_ERROR, "Failed to allocate memory for occupied"); prm->code = FUN_ERROR; return; }
+        if(TCSS.occupied == NULL) {  LogError( "Failed to allocate memory for occupied"); prm->code = FUN_ERROR; return; }
         memset(TCSS.occupied, 0, sizeof(bool) * POOL_AREA);
 
         //Initialize texture
@@ -513,12 +533,12 @@ BEGIN_CLASS(0xA001, Central Pixel Pool);
         SetTextureWrap(TCSS.gpuTex, TEXTURE_WRAP_CLAMP);
 
 
-        TraceLog(LOG_INFO, "Quadtree allocator initialized: MAXLEVEL=%d, MINBLOCKSIZE=%d", MAXLEVEL, MINBLOCKSIZE);
-    })
+        FLogInfo("Quadtree allocator initialized: MAXLEVEL=%d, MINBLOCKSIZE=%d", MAXLEVEL, MINBLOCKSIZE);
+    }
 
     BEGIN_FUNFIND()
 
-        FUNFIND_INITTER();
+        FUNFIND_IMPLOTHER(DEF_INITIALIZE);
 
         FUNFIND_IMPL(rentHandle);
         FUNFIND_IMPL(evictHandle);

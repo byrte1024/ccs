@@ -46,11 +46,11 @@ static void Class_Definition_CallFunction(const ClassID cid, FunCall* call) {
             def->callFunction((FunCall*)call);
         }
         else {
-            TraceLog(LOG_ERROR, "Class %s has no callFunction", def->name);
+            FLogError("Class %s has no callFunction", def->name);
         }
     }
     else {
-        TraceLog(LOG_ERROR, "Class %d has no definition", cid);
+        FLogError("Class %d has no definition", cid);
     }
 }
 static bool Class_Definition_HasFunction(const ClassID id, const FunctionID fid) {
@@ -61,7 +61,7 @@ static bool Class_Definition_HasFunction(const ClassID id, const FunctionID fid)
             return def->hasFunction(fid);
         }
         else {
-            TraceLog(LOG_ERROR, "Class %s has no hasFunction", def->name);
+            FLogError("Class %s has no hasFunction", def->name);
         }
     }
     return false;
@@ -72,23 +72,23 @@ DEFINE_FUNCTION_WRAPPER(INITIALIZE, , )
 
 static bool Class_System_RegisterDefinition(const ClassDef def) {
     if (def.id == CID_DEF) {
-        TraceLog(LOG_ERROR, "Class %s has invalid id", def.name);
+        FLogError("Class %s has invalid id", def.name);
         return false;
     }
     if (Class_System_HasDefinition(def.id)) {
-        TraceLog(LOG_ERROR, "Class %s has already been registered", def.name);
+        FLogError("Class %s has already been registered", def.name);
         return false;
     }
 
     class_def[def.id] = def;
-    TraceLog(LOG_INFO, "Class %s has been succesfully registered!", def.name);
+    FLogInfo("Class %s has been succesfully registered!", def.name);
 
     if(Class_Definition_HasFunction(def.id, FID_DEF_INITIALIZE)){
         F_DEF_INITIALIZE_PRM prm = { .code = FUN_NOTFOUND };
         FunCall initialize_call = { .fid = FID_DEF_INITIALIZE, .prm = &prm };
         Class_Definition_CallFunction(def.id, &initialize_call);
         if(prm.code != FUN_OK){
-            TraceLog(LOG_ERROR, "Class %s initialize failed with code %d", def.name, prm.code);
+            FLogError("Class %s initialize failed with code %d", def.name, prm.code);
             return false;
         }
     }

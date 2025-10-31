@@ -1,4 +1,10 @@
+#define INSPECTION_IMMUNITY
+
+#pragma once
+
 //macro.h
+
+#include "Log.h"
 
 #pragma once
 
@@ -42,7 +48,7 @@
     enum { \
         EP2(CID_,TYPE) = cid \
     }; \
-    static const char* EP3(C_,TYPE,_NAME) = #name
+    static const char* EP3(C_,TYPE,_NAME) = #name;
 
 
 
@@ -73,7 +79,7 @@
         EP4(FID_LOCAL_,TYPE,_,name) = lfid, \
         EP4(FID_,TYPE,_,name) = COMPOSE_FUNCTIONID(EP4(FID_LOCAL_,TYPE,_,name),EP2(CID_,TYPE)) \
     }; \
-    const char* EP5(F_,TYPE,_,name,_NAME) = XSTR(name); \
+    const inline char* EP5(F_,TYPE,_,name,_NAME) = XSTR(name); \
     typedef struct EP5(F_,TYPE,_,name,_PRM) { \
         char code; \
         args \
@@ -115,15 +121,14 @@
 #define CALL_FAST_FUNCTION(classname, name, ...)\
     EP5(F_,classname,_,name,_EXECUTE)(&((EP5(F_,classname,_,name,_PRM)){ __VA_ARGS__ }))
 
-#define IMPL_FUNCTION(name, ...) \
-    IMPLOTHER_FUNCTION(EP3(TYPE,_,name),__VA_ARGS__)
+#define IMPL_FUNCTION(name) IMPLOTHER_FUNCTION(EP3(TYPE,_,name))
 
-#define IMPLOTHER_FUNCTION(name, ...) \
-    static void EP4(F_EXEC_,TYPE,_,name)(EP3(F_,name,_PRM*) prm) \
-    { \
-    EP2(prm->c,ode) = FUN_OK; \
-    EP(__VA_ARGS__) \
-    }
+#define IMPLOTHER_FUNCTION(name) static void EP4(F_EXEC_,TYPE,_,name)(EP3(F_,name,_PRM*) prm)
+
+#define IMPL_HEADER \
+        prm->code = FUN_OK; 
+
+
 
 #define BEGIN_FUNFIND() \
     static void* EP3(C_,TYPE,_FUNFIND)(FunctionID fid) \
@@ -136,7 +141,7 @@
 
 #define FUNFIND_IMPLOTHER(name) \
         case EP2(FID_,name):\
-            return EP4(F_EXEC_,TYPE,_,name);
+            return EP4(F_EXEC_,TYPE,_,name)
 
 #define END_FUNFIND() \
     default: \
@@ -172,14 +177,11 @@
     } EP2(S_,TYPE); \
     DEFINE_STATIC_VAR(EP2(S_,TYPE), )
 
-#define IMPL_INITTER(...) \
-    IMPLOTHER_FUNCTION(DEF_INITIALIZE, { \
-        __VA_ARGS__\
-    })
+#define TYPEOF(type) EP2(S_,type)
 
 #define CLASS_STRUCT(type) EP2(S_,type)
 
-#define CLASS_STATIC_STRUCT(type) EP1(P_SVAR(EP1(type), ))
+#define CLS(type) EP2(S_,type)
 
 #define CSS(type) EP4(type,_,SVAR,_)
 #define TCSS EP4(TYPE,_,SVAR,_)
@@ -203,5 +205,45 @@
 #define CF CALL_FUNCTION
 #define CFF CALL_FAST_FUNCTION
 
-#define FUNFIND_INITTER() \
-    FUNFIND_IMPLOTHER(DEF_INITIALIZE);
+    /*
+#define FATAL_ASSERT(condition) \
+    if(!(EP1(condition))){ \
+        FLogError("Assertion failed: %s", STR(condition)); \
+        #ifdef DEBUG \
+        getchar(); \
+        #endif \
+        abort(); \
+    }
+
+#define ASSERT(condition) \
+    if(!(EP1(condition)){ \
+        FLogError("Assertion failed: %s", STR(condition)); \
+        #ifdef DEBUG \
+        getchar(); \
+        #endif \
+    }
+    */
+#ifdef DEBUG
+#define ASSERT(condition) \
+    { \
+        if(!EP1(condition)) \
+        { \
+            FLogError("Assertion failed: %s", STR(condition)); \
+            LogError("Press any key to continue"); \
+            getchar(); \
+        } \
+    }
+#else
+
+#define ASSERT(condition) \
+    { \
+        if(!EP1(condition)) \
+        { \
+            FLogError("Assertion failed: %s", STR(condition)); \
+        } \
+        abort(); \
+    }
+
+#endif
+
+#undef INSPECTION_IMMUNITY

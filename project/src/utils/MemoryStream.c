@@ -278,17 +278,19 @@ bool MemoryStream_SetBytes(MemoryStream* self, uint8_t value, size_t count, uint
     self->cursor += count;
     return true;
 }
-bool MemoryStream_ReadChar(MemoryStream* self, uint8_t** ptr_to_data_ptr)
+bool MemoryStream_ReadChar(MemoryStream* self, char* out, uint8_t** ptr_to_data_ptr)
 {
     if (!self || self->cursor >= self->capacity) return false;
     if (ptr_to_data_ptr) *ptr_to_data_ptr = self->data + self->cursor;
+    if(out) *out = (char)self->data[self->cursor];
     self->cursor += 1;
     return true;
 }
-bool MemoryStream_ReadBytes(MemoryStream* self, uint8_t** ptr_to_data_ptr, size_t count)
+bool MemoryStream_ReadBytes(MemoryStream* self, uint8_t* out, uint8_t** ptr_to_data_ptr, size_t count)
 {
     if (!self || self->cursor + count > self->capacity) return false;
     if (ptr_to_data_ptr) *ptr_to_data_ptr = self->data + self->cursor;
+    if(out) memcpy(out, self->data + self->cursor, count);
     self->cursor += count;
     return true;
 }

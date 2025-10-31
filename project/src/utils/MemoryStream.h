@@ -50,8 +50,8 @@ bool MemoryStream_WriteBytes(MemoryStream* self, const uint8_t* bytes, size_t co
 bool MemoryStream_WriteCstr(MemoryStream* self, const char* string, size_t buff_len, uint8_t** ptr_to_data_ptr);
 bool MemoryStream_WriteHex(MemoryStream* self, const uint8_t* bytes, size_t count, uint8_t** ptr_to_data_ptr);
 bool MemoryStream_SetBytes(MemoryStream* self, uint8_t value, size_t count, uint8_t** ptr_to_data_ptr);
-bool MemoryStream_ReadChar(MemoryStream* self, uint8_t** ptr_to_data_ptr);
-bool MemoryStream_ReadBytes(MemoryStream* self, uint8_t** ptr_to_data_ptr, size_t count);
+bool MemoryStream_ReadChar(MemoryStream* self, char* out, uint8_t** ptr_to_data_ptr);
+bool MemoryStream_ReadBytes(MemoryStream* self, uint8_t* out, uint8_t** ptr_to_data_ptr, size_t count);
 
 //Static data functions: (will not use the cursor)
 bool MemoryStream_Static_WriteChar(MemoryStream* self, size_t cursor, uint8_t character, uint8_t** ptr_to_data_ptr);

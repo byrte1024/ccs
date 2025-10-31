@@ -1,0 +1,9 @@
+CompileFlags:
+  Add: [
+    -x, c,
+    -target, x86_64-w64-mingw32,
+    -std=c23,
+    -IC:/msys64/mingw64/include
+  ]
+Diagnostics:
+  Suppress: [inline_non_function]

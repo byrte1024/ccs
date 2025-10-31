@@ -56,3 +56,18 @@ dkms.conf
 
 .vscode/*
 build/*
+/ccs/node_modules
+ccs/CHANGELOG.md
+ccs/vsc-extension-quickstart.md
+/ccs/out
+ccs/README.md
+ccs/package.json
+ccs/package-lock.json
+ccs/eslint.config.mjs
+ccs/ccs-0.0.1.vsix
+ccs/.vscodeignore
+ccs/.vscode/launch.json
+ccs/.vscode/extensions.json
+ccs/.vscode/settings.json
+ccs/.vscode/tasks.json
+ccs/tsconfig.json

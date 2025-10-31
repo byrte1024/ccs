@@ -62,3 +62,5 @@ static int ilog2(unsigned int v) {
     while (v > 1) { v >>= 1; ++r; }
     return r;
 }
+
+#define CLAMP(x, min, max) (x < min ? min : (x > max ? max : x))

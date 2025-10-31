@@ -202,18 +202,18 @@ functions also define some basic error codes, which are:
 
 //when we call sayhi, we will print: "My name is: %s"!
 IMPL_FUNCTION(SAYHI, {
-    TraceLog(LOG_INFO,TextFormat("My name is: %s",prm->name));
+    LogInfo(TextFormat("My name is: %s",prm->name));
 })
 
 //when we call explode, we will print a message depending on the value!
 IMPL_FUNCTION(EXPLODE, {
     if(prm->power < 5){
-        TraceLog(LOG_INFO,TextFormat("Thats it? I am not going to explode!"));
+        LogInfo(TextFormat("Thats it? I am not going to explode!"));
     }else if(prm->power < 10){
-        TraceLog(LOG_INFO,TextFormat("Owe, that kinda hurt, but I am not going to explode!"));
+        LogInfo(TextFormat("Owe, that kinda hurt, but I am not going to explode!"));
     }
     else{
-        TraceLog(LOG_INFO,TextFormat("I am going to explode!"));
+        LogInfo(TextFormat("I am going to explode!"));
     }
 })
 
@@ -242,18 +242,18 @@ Notice that unlike local functions, we have to type the full name.
 
 //when we call sayhi, we will print our name AGGRESIVELY!
 IMPLOTHER_FUNCTION(TESTTYPE_SAYHI, {
-    TraceLog(LOG_INFO,TextFormat("MY NAME IS %!!!!!!!!!!!",prm->name));
+    LogInfo(TextFormat("MY NAME IS %!!!!!!!!!!!",prm->name));
 })
 
 //when we call explode, we will print a message depending on the value!
 IMPLOTHER_FUNCTION(TESTTYPE_EXPLODE, {
     if(prm->power < 5){
-        TraceLog(LOG_INFO,TextFormat("THATS IT??? THATS ALL YOU HAVE???"));
+        LogInfo(TextFormat("THATS IT??? THATS ALL YOU HAVE???"));
     }else if(prm->power < 10){
-        TraceLog(LOG_INFO,TextFormat("THATS NOT ENOUGH!!!! NOT ENOUGHHH!!!!!"));
+        LogInfo(TextFormat("THATS NOT ENOUGH!!!! NOT ENOUGHHH!!!!!"));
     }
     else{
-        TraceLog(LOG_INFO,TextFormat("YESSSSSSSSSS!! I AM GOING TO EXPLODE!!!!"));
+        LogInfo(TextFormat("YESSSSSSSSSS!! I AM GOING TO EXPLODE!!!!"));
     }
 })
 
@@ -298,7 +298,7 @@ In the arguments section, we can pass any arguments the struct accepts, kind of 
 
 FUNPRM(TESTTYPE_SAYHI) prm = CALL_FUNCTION(TESTTYPE, TESTTYPE_SAYHI, .name = "Weee" );
 if(prm->code != FUN_OK){
-    TraceLog(LOG_ERROR,TextFormat("Error occured!"));
+    LogError(TextFormat("Error occured!"));
 }
 
 ```
