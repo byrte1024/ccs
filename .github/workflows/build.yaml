@@ -32,6 +32,14 @@ jobs:
           curl -L https://raw.githubusercontent.com/raysan5/raygui/refs/heads/master/src/raygui.h -o /c/msys64/mingw64/include/raygui.h
           echo "raygui.h installed to C:\\msys64\\mingw64\\include"
 
+      - name: Install Mesa3D software renderer
+        shell: bash
+        run: |
+          curl -L https://github.com/pal1000/mesa-dist-win/releases/download/25.2.5/mesa3d-25.2.5-release-mingw.7z -o mesa.7z
+          7z x mesa.7z -omesa
+          cp mesa/x64/opengl32.dll /c/msys64/mingw64/bin/
+
+
       - name: Build Debug
         shell: msys2 {0}
         run: ./compile.bat debug false
